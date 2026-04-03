@@ -8,7 +8,7 @@ const EMAIL     = "info@lexfiscalia.es"; // ← reemplaza
 // ─────────────────────────────────────────────────────────────────
 
 const WA_MSG = encodeURIComponent(
-  "Hola Sonia 😊 Creo que puedo estar pagando más de lo que debería y me gustaría que lo revisaras.\n\nTe dejo mis datos:\n1️⃣ Trabajo como:\n2️⃣ Ingresos aproximados:\n3️⃣ Mi duda principal es:\n4️⃣ Mi objetivo es: pagar menos / ordenar mi fiscalidad / revisar mi situación"
+  "Hola Sonia 😊 Quiero saber si estoy pagando más impuestos de los que debería.\n\nTe resumo mi caso:\n- A qué me dedico:\n- Ingresos aproximados:\n- Si soy autónomo, empresa o particular:\n- Mi duda principal:\n\nMe gustaría que lo revisaras."
 );
 const WA_HREF = `https://wa.me/${WA_NUMBER}?text=${WA_MSG}`;
 
@@ -49,22 +49,19 @@ export default function LandingPage() {
   return (
     <div className="bg-zinc-950 text-zinc-100 min-h-screen" style={{ fontFamily: "'DM Mono', monospace" }}>
 
-      {/* ── WHATSAPP FLOATING ────────────────────────────────────── */}
+      {/* ── WHATSAPP FLOTANTE ────────────────────────────────────── */}
       <button
         onClick={openFunnel}
         aria-label="Hablar con una persona real ahora"
-        className="fixed bottom-6 right-4 z-50 w-13 h-13 w-[52px] h-[52px] rounded-full bg-emerald-600 flex items-center justify-center shadow-2xl wa-pulse hover:scale-105 transition-transform text-white"
+        className="fixed bottom-6 right-4 z-50 w-[52px] h-[52px] rounded-full bg-emerald-600 flex items-center justify-center shadow-2xl wa-pulse hover:scale-105 transition-transform text-white"
       >
         {WA_SVG(22)}
       </button>
 
-      {/* ── MODAL / BOTTOM-SHEET ─────────────────────────────────── */}
+      {/* ── MODAL ────────────────────────────────────────────────── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={closeModal}
-          />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeModal} />
           <div className="modal-sheet relative w-full sm:max-w-sm mx-0 sm:mx-4 bg-zinc-900 border border-zinc-700/60 rounded-t-2xl sm:rounded-2xl p-6 pb-8 sm:pb-6">
             <button
               onClick={closeModal}
@@ -76,28 +73,33 @@ export default function LandingPage() {
               </svg>
             </button>
 
-            <p className="text-[10px] text-emerald-500 uppercase tracking-widest mb-3">WhatsApp directo</p>
-            <p className="text-xs text-zinc-500 mb-2 leading-relaxed">
+            <p className="text-[10px] text-emerald-500 uppercase tracking-widest mb-2">WhatsApp directo</p>
+            <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
               No tienes que saber de impuestos. Para eso estoy yo.
             </p>
             <p className="text-base font-bold text-zinc-100 mb-4 leading-snug" style={{ fontFamily: "'Syne', sans-serif" }}>
               Te respondo yo personalmente.
             </p>
 
-            <div className="flex gap-2 mb-5">
+            <div className="flex flex-wrap gap-1.5 mb-5">
               {["Sin bots", "Respuesta clara", "Caso confidencial"].map((t) => (
-                <span key={t} className="text-[10px] border border-zinc-700 text-zinc-400 px-2 py-1 rounded-full leading-none">
+                <span key={t} className="text-[10px] border border-zinc-700 text-zinc-400 px-2.5 py-1 rounded-full leading-none">
                   {t}
                 </span>
               ))}
             </div>
 
-            <div className="bg-zinc-800/50 border border-zinc-800 rounded-lg p-3.5 mb-5">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Para ayudarte, cuéntame</p>
-              <ul className="space-y-1">
-                {["A qué te dedicas", "Ingresos aproximados", "Tu duda principal"].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-xs text-zinc-400">
-                    <span className="w-1 h-1 rounded-full bg-zinc-600 flex-shrink-0" />
+            <div className="bg-zinc-800/40 border border-zinc-800 rounded-lg p-3.5 mb-5">
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2.5">Cuéntame brevemente</p>
+              <ul className="space-y-1.5">
+                {[
+                  "A qué te dedicas",
+                  "Ingresos aproximados",
+                  "Si eres autónomo, empresa o particular",
+                  "Tu duda principal",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-xs text-zinc-400">
+                    <span className="w-1 h-1 rounded-full bg-zinc-600 flex-shrink-0 mt-1.5" />
                     {item}
                   </li>
                 ))}
@@ -106,12 +108,12 @@ export default function LandingPage() {
 
             <button
               onClick={handleWA}
-              className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors mb-2.5"
+              className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors mb-2"
             >
               {WA_SVG(18)}
               Sí, quiero que revises mi caso
             </button>
-            <p className="text-[10px] text-zinc-600 text-center mb-1">Tardarás menos de 1 minuto</p>
+            <p className="text-[10px] text-zinc-600 text-center mb-2">Tardarás menos de 1 minuto</p>
             <button
               onClick={scrollToContact}
               className="block w-full text-center text-xs text-zinc-600 hover:text-zinc-400 py-2 transition-colors"
@@ -148,52 +150,74 @@ export default function LandingPage() {
       {/* ── HERO ─────────────────────────────────────────────────── */}
       <section className="max-w-xl mx-auto px-4 pt-12 pb-10">
         <p className="text-[10px] text-zinc-600 uppercase tracking-[0.2em] mb-5">
-          Asesoría Fiscal · Inteligencia Regulatoria
+          Asesoría Fiscal · España
         </p>
-        <h1 className="text-[1.9rem] font-extrabold leading-tight text-zinc-100 mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>
+
+        <h1
+          className="text-[2rem] font-extrabold leading-[1.15] text-zinc-100 mb-5"
+          style={{ fontFamily: "'Syne', sans-serif" }}
+        >
           Probablemente estás pagando
           <br />
-          <span className="text-red-400">más impuestos de los que debes.</span>
+          <span className="text-red-400">más impuestos de los que deberías.</span>
         </h1>
-        <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-          Cada mes que pasa sin revisarlo, probablemente estás perdiendo dinero sin saberlo.
-        </p>
-        <p className="text-sm text-zinc-400 leading-relaxed mb-8">
-          No por mala suerte. Por falta de asesoramiento real y criterio claro.
-          Lo primero que hacemos es revisar tu situación sin rodeos,
-          y decirte exactamente dónde hay margen de mejora.
+
+        <p className="text-sm text-zinc-300 leading-relaxed mb-8">
+          Reviso tu caso y te digo, de forma clara y sin compromiso,
+          si estás perdiendo deducciones, pagando de más o dejando
+          decisiones fiscales sin optimizar.
         </p>
 
         <button
           onClick={openFunnel}
-          className="w-full py-3.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs uppercase tracking-widest font-bold transition-colors mb-2.5"
+          className="w-full py-4 rounded bg-red-600 hover:bg-red-500 text-white text-xs uppercase tracking-widest font-bold transition-colors mb-3"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
           Quiero saber si estoy pagando de más
         </button>
-        <p className="text-[10px] text-zinc-600 text-center mb-2">
-          Te respondo yo personalmente. Sin bots. Sin compromiso.
+
+        <p className="text-[10px] text-zinc-500 text-center mb-4">
+          +10 años asesorando · Respuesta real en &lt;24h · Sin bots
         </p>
+
         <Link
           href="/radar"
-          className="block w-full text-center py-3 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-600 hover:text-zinc-300 transition-colors mb-6"
+          className="block w-full text-center py-2.5 text-zinc-600 text-xs hover:text-zinc-400 transition-colors"
         >
-          Ver el Radar BOE en vivo
+          Ver el Radar BOE en vivo →
         </Link>
 
-        <p className="text-[10px] text-zinc-600 text-center">
-          Sin compromiso · Respondo personalmente en menos de 24h · Confidencial
+        <p className="text-[11px] text-zinc-500 text-center mt-6 leading-relaxed border-t border-zinc-800/50 pt-5">
+          Cada año que no revisas tu fiscalidad, pierdes dinero que ya era tuyo.
         </p>
+      </section>
+
+      {/* ── PARA QUIÉN ───────────────────────────────────────────── */}
+      <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-6">
+        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-4">Para quién es</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ["Autónomos y freelancers", "Si pagas por módulos o tienes dudas sobre qué puedes deducir."],
+            ["Profesionales liberales", "Médicos, abogados, arquitectos. IRPF alto y pocas certezas."],
+            ["Pequeñas empresas", "SL sin asesor propio o con dudas sobre la estructura actual."],
+            ["Particulares", "Una situación fiscal compleja que nadie te ha explicado con claridad."],
+          ].map(([title, sub]) => (
+            <div key={title} className="border border-zinc-800/50 rounded p-3">
+              <p className="text-xs text-zinc-200 font-medium mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>{title}</p>
+              <p className="text-[10px] text-zinc-600 leading-tight">{sub}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ── CONFIANZA ────────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-6">
         <div className="grid grid-cols-2 gap-2">
           {[
-            ["✓ Sin cuotas ocultas", "Lo que acordamos es lo que pagas."],
-            ["✓ Respondo yo, no un bot", "Sin departamentos. Sin esperas."],
-            ["✓ Primera consulta gratis", "Revisamos tu caso antes de comprometerte."],
-            ["✓ Confidencialidad total", "Tu información no sale de aquí."],
+            ["✓ Primera consulta gratis", "Reviso tu caso antes de que te comprometas a nada."],
+            ["✓ Respondo yo, no un bot", "Sin departamentos. Sin demoras. Sin automatizaciones."],
+            ["✓ Sin cuotas ocultas", "Lo que acordamos es lo que pagas. Siempre."],
+            ["✓ Confidencialidad total", "Tu información no sale de aquí. Punto."],
           ].map(([title, sub]) => (
             <div key={title} className="border border-zinc-800/60 rounded p-3">
               <p className="text-[11px] text-zinc-300 font-medium mb-0.5">{title}</p>
@@ -205,7 +229,7 @@ export default function LandingPage() {
 
       {/* ── AUTORIDAD ────────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-5">Sobre mí</p>
+        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-5">Quién hay detrás</p>
         <div className="flex items-start gap-4 mb-5">
           <div className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700/60 flex-shrink-0 overflow-hidden">
             {/* Coloca tu foto en /public/foto.jpg */}
@@ -216,21 +240,21 @@ export default function LandingPage() {
               Sonia {/* ← añade apellido */}
             </p>
             <p className="text-[10px] text-zinc-500 mb-3">
-              Asesora fiscal · Especialista en IRPF, autónomos y pequeñas empresas
+              Asesora fiscal · IRPF · Autónomos · Pequeñas empresas
             </p>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Más de 10 años asesorando a profesionales que no quieren sorpresas
-              en la declaración. Trabajo de forma directa: sin intermediarios,
-              sin respuestas automáticas, sin perder el tiempo de nadie.
+              Más de 10 años revisando casos reales. No trabajo con plantillas:
+              analizo tu situación concreta, te explico lo que veo y te digo
+              exactamente qué harías diferente.
               Si puedo ayudarte, te lo digo. Si no puedo, también.
             </p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            ["+10 años", "Asesoría fiscal"],
+            ["+10 años", "Experiencia real"],
             ["BOE diario", "Monitorizado"],
-            ["<24h", "Respuesta real"],
+            ["<24h", "Respuesta directa"],
           ].map(([n, l], i) => (
             <div key={i} className="border border-zinc-800/60 rounded p-3 text-center">
               <p className="text-sm font-bold text-zinc-200" style={{ fontFamily: "'Syne', sans-serif" }}>{n}</p>
@@ -242,23 +266,23 @@ export default function LandingPage() {
 
       {/* ── BENEFICIOS ───────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-5">Qué obtienes</p>
+        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-5">Lo que resuelvo</p>
         <div className="space-y-2.5">
           {[
             {
               n: "01",
-              title: "Tu situación fiscal, revisada de verdad",
-              body: "Analizo tus ingresos, tus gastos reales y tu estructura para decirte exactamente qué estás dejando de deducir. Sin generalidades.",
+              title: "Detecto lo que estás dejando de deducir",
+              body: "Analizo tus ingresos y gastos reales. Te digo qué puedes deducir, qué no, y por qué. Sin tecnicismos, sin generalidades.",
             },
             {
               n: "02",
-              title: "El BOE filtrado por lo que te afecta",
-              body: "Monitorizo el Boletín Oficial cada día y clasifico por impacto real. Solo te aviso si algo cambia lo que te afecta directamente.",
+              title: "Te aviso cuando el BOE te afecta",
+              body: "Reviso el Boletín Oficial cada día. Si algo cambia lo que te toca pagar o declarar, lo sabes antes que la mayoría.",
             },
             {
               n: "03",
-              title: "Acceso directo a mí, sin burocracia",
-              body: "Me escribes, te respondo yo. Sin formularios de soporte, sin colas, sin respuestas automáticas. Un punto de contacto, siempre.",
+              title: "Respondo yo. Siempre.",
+              body: "Nada de bots, departamentos ni formularios. Me escribes, te respondo personalmente. Sin esperas, sin intermediarios.",
             },
           ].map((item) => (
             <div key={item.n} className="border border-zinc-800 rounded bg-zinc-900/30 p-4 flex gap-3">
@@ -272,23 +296,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA RADAR ────────────────────────────────────────────── */}
+      {/* ── RADAR CTA ────────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <div className="border border-red-500/15 rounded bg-red-500/5 p-5">
+        <div className="border border-zinc-800 rounded bg-zinc-900/20 p-5">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1.5 h-1.5 rounded-full bg-red-500 blink" />
-            <p className="text-[10px] text-red-500 uppercase tracking-widest">Monitor en vivo</p>
+            <p className="text-[10px] text-zinc-600 uppercase tracking-widest">Herramienta incluida</p>
           </div>
-          <p className="text-sm font-bold text-zinc-100 mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>
-            El BOE de hoy, ya clasificado.
+          <p className="text-sm font-bold text-zinc-200 mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>
+            Radar BOE PRO — activo y en vivo.
           </p>
-          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-            Comprueba qué disposiciones requieren acción inmediata hoy,
-            cuáles revisar y cuáles ignorar sin riesgo.
+          <p className="text-xs text-zinc-600 mb-4 leading-relaxed">
+            Cada disposición del Boletín Oficial clasificada por impacto real:
+            qué exige acción, qué revisar, qué ignorar.
           </p>
           <Link
             href="/radar"
-            className="block w-full text-center py-3 rounded border border-red-500/25 text-red-400 text-xs uppercase tracking-widest hover:bg-red-500/8 transition-colors"
+            className="block w-full text-center py-2.5 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-700 hover:text-zinc-300 transition-colors"
           >
             Abrir Radar BOE →
           </Link>
@@ -299,11 +323,11 @@ export default function LandingPage() {
       <section id="contacto" className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
         <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-2">Hablamos</p>
         <p className="text-lg font-bold text-zinc-100 mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>
-          ¿Tienes dudas sobre tu fiscalidad?
+          ¿Cuánto estás perdiendo sin saberlo?
         </p>
         <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
-          Cuéntame tu situación. En menos de 24h te digo
-          si puedo ayudarte, cómo y qué pasos dar.
+          Cuéntame tu situación. En menos de 24h te digo exactamente
+          si puedo ayudarte y qué harías diferente.
           Sin rodeos, sin venderte lo que no necesitas.
         </p>
         <button
@@ -315,27 +339,27 @@ export default function LandingPage() {
         </button>
         <a
           href={`mailto:${EMAIL}`}
-          className="block w-full text-center py-2.5 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-600 hover:text-zinc-300 transition-colors mb-5"
+          className="block w-full text-center py-2.5 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-700 hover:text-zinc-300 transition-colors mb-5"
         >
           Enviar email
         </a>
         <p className="text-[10px] text-zinc-700 text-center leading-relaxed">
-          Sin bots · Sin automatizaciones · Respondo yo · Confidencial
+          Sin bots · Respondo yo · Confidencial · Sin compromiso
         </p>
       </section>
 
       {/* ── CIERRE ───────────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-10">
-        <p className="text-xs text-zinc-500 leading-relaxed mb-2">
-          No revisar tu situación fiscal no te ahorra dinero. Normalmente te hace perderlo.
+        <p className="text-sm font-bold text-zinc-300 leading-snug mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>
+          No revisar tu situación fiscal no te ahorra dinero.
+          <span className="text-zinc-500 font-normal"> Normalmente te hace perderlo.</span>
         </p>
-        <p className="text-xs text-zinc-600 leading-relaxed mb-5">
-          No esperes a descubrir en la próxima declaración
-          lo que podrías haber ahorrado este año.
+        <p className="text-xs text-zinc-600 leading-relaxed mb-6">
+          No esperes a descubrir en la próxima declaración lo que podrías haber corregido antes.
         </p>
         <button
           onClick={openFunnel}
-          className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors border-b border-red-500/20 hover:border-red-400/40 pb-0.5"
+          className="inline-flex items-center gap-2 text-sm font-bold text-red-400 hover:text-red-300 transition-colors"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
           Revisar mi caso ahora →
