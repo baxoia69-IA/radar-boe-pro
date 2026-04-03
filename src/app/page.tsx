@@ -8,7 +8,7 @@ const EMAIL     = "info@lexfiscalia.es"; // ← reemplaza
 // ─────────────────────────────────────────────────────────────────
 
 const WA_MSG = encodeURIComponent(
-  "Hola Sonia 😊 Quiero saber si estoy pagando más impuestos de los que debería.\n\nTe resumo mi caso:\n- A qué me dedico:\n- Ingresos aproximados:\n- Si soy autónomo, empresa o particular:\n- Mi duda principal:\n\nMe gustaría que lo revisaras."
+  "Hola Sonia 😊\nCreo que puedo estar pagando más impuestos de los que debería y me gustaría que revisaras mi caso.\n\nTe dejo un resumen:\n- A qué me dedico:\n- Ingresos aproximados:\n- Autónomo / empresa / particular:\n- Duda principal:\n\nGracias."
 );
 const WA_HREF = `https://wa.me/${WA_NUMBER}?text=${WA_MSG}`;
 
@@ -157,15 +157,14 @@ export default function LandingPage() {
           className="text-[2rem] font-extrabold leading-[1.15] text-zinc-100 mb-5"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
-          Probablemente estás pagando
+          Estás pagando más impuestos
           <br />
-          <span className="text-red-400">más impuestos de los que deberías.</span>
+          <span className="text-red-400">de los que deberías. Y probablemente no lo sabes.</span>
         </h1>
 
         <p className="text-sm text-zinc-300 leading-relaxed mb-8">
-          Reviso tu caso y te digo, de forma clara y sin compromiso,
-          si estás perdiendo deducciones, pagando de más o dejando
-          decisiones fiscales sin optimizar.
+          Reviso tu caso personalmente y te digo, claro y sin compromiso,
+          si estás pagando de más o perdiendo oportunidades fiscales.
         </p>
 
         <button
@@ -173,11 +172,11 @@ export default function LandingPage() {
           className="w-full py-4 rounded bg-red-600 hover:bg-red-500 text-white text-xs uppercase tracking-widest font-bold transition-colors mb-3"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
-          Quiero saber si estoy pagando de más
+          Quiero que revises mi caso
         </button>
 
         <p className="text-[10px] text-zinc-500 text-center mb-4">
-          +10 años asesorando · Respuesta real en &lt;24h · Sin bots
+          Más de 10 años detectando errores fiscales reales · Respuesta personal en menos de 24h
         </p>
 
         <Link
@@ -188,7 +187,7 @@ export default function LandingPage() {
         </Link>
 
         <p className="text-[11px] text-zinc-500 text-center mt-6 leading-relaxed border-t border-zinc-800/50 pt-5">
-          Cada año que no revisas tu fiscalidad, pierdes dinero que ya era tuyo.
+          Si no revisas tu fiscalidad, no te ahorras dinero. Lo pierdes.
         </p>
       </section>
 
@@ -197,10 +196,10 @@ export default function LandingPage() {
         <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-4">Para quién es</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            ["Autónomos y freelancers", "Si pagas por módulos o tienes dudas sobre qué puedes deducir."],
-            ["Profesionales liberales", "Médicos, abogados, arquitectos. IRPF alto y pocas certezas."],
-            ["Pequeñas empresas", "SL sin asesor propio o con dudas sobre la estructura actual."],
-            ["Particulares", "Una situación fiscal compleja que nadie te ha explicado con claridad."],
+            ["Autónomos", "Si facturas, pero no tienes claro si estás optimizando impuestos."],
+            ["Profesionales", "Si tienes ingresos estables pero dudas si estás pagando de más."],
+            ["Pequeñas empresas", "Si tomas decisiones fiscales sin saber si son las mejores."],
+            ["Particulares", "Si haces la declaración sin entender realmente el resultado."],
           ].map(([title, sub]) => (
             <div key={title} className="border border-zinc-800/50 rounded p-3">
               <p className="text-xs text-zinc-200 font-medium mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>{title}</p>
@@ -271,17 +270,17 @@ export default function LandingPage() {
           {[
             {
               n: "01",
-              title: "Detecto lo que estás dejando de deducir",
+              title: "Detecto dónde estás perdiendo dinero sin darte cuenta",
               body: "Analizo tus ingresos y gastos reales. Te digo qué puedes deducir, qué no, y por qué. Sin tecnicismos, sin generalidades.",
             },
             {
               n: "02",
-              title: "Te aviso cuando el BOE te afecta",
+              title: "Te explico en claro lo que el BOE no explica",
               body: "Reviso el Boletín Oficial cada día. Si algo cambia lo que te toca pagar o declarar, lo sabes antes que la mayoría.",
             },
             {
               n: "03",
-              title: "Respondo yo. Siempre.",
+              title: "Te digo exactamente qué deberías cambiar",
               body: "Nada de bots, departamentos ni formularios. Me escribes, te respondo personalmente. Sin esperas, sin intermediarios.",
             },
           ].map((item) => (
@@ -351,11 +350,11 @@ export default function LandingPage() {
       {/* ── CIERRE ───────────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-10">
         <p className="text-sm font-bold text-zinc-300 leading-snug mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>
-          No revisar tu situación fiscal no te ahorra dinero.
-          <span className="text-zinc-500 font-normal"> Normalmente te hace perderlo.</span>
+          No revisar tu situación fiscal no te protege.
+          <span className="text-zinc-500 font-normal"> Normalmente te hace perder dinero.</span>
         </p>
         <p className="text-xs text-zinc-600 leading-relaxed mb-6">
-          No esperes a descubrir en la próxima declaración lo que podrías haber corregido antes.
+          Lo que no revisas hoy, lo pagas después.
         </p>
         <button
           onClick={openFunnel}
