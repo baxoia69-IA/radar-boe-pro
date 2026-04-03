@@ -158,11 +158,11 @@ export default function LandingPage() {
           style={SYNE}
         >
           Estás pagando más impuestos{" "}
-          <span className="text-red-700">de los que deberías. Y probablemente no lo sabes.</span>
+          <span className="text-red-700">de los que deberías. Y nadie te lo está diciendo.</span>
         </h1>
 
         <p className="text-base text-gray-600 leading-relaxed mb-8">
-          Reviso tu caso personalmente y te digo, claro y sin compromiso,
+          Reviso tu caso personalmente y te explico, de forma clara,
           si estás pagando de más o perdiendo oportunidades fiscales.
         </p>
 
@@ -186,6 +186,9 @@ export default function LandingPage() {
 
         <p className="text-sm font-medium text-gray-700 text-center border-t border-gray-100 mt-6 pt-5">
           Si no revisas tu fiscalidad, no te ahorras dinero. Lo pierdes.
+        </p>
+        <p className="text-sm text-gray-500 text-center mt-3">
+          La mayoría de personas no paga menos impuestos porque no sabe que puede hacerlo.
         </p>
       </section>
 
@@ -354,11 +357,10 @@ export default function LandingPage() {
       <div className="bg-gray-50 border-t border-gray-100 w-full">
         <section className="max-w-xl mx-auto px-4 py-12">
           <p className="text-lg font-bold text-gray-900 leading-snug mb-2" style={SYNE}>
-            No revisar tu situación fiscal no te protege.{" "}
-            <span className="text-gray-500 font-normal">Normalmente te hace perder dinero.</span>
+            Lo que no revisas hoy, lo pagas después.
           </p>
           <p className="text-sm text-gray-500 leading-relaxed mb-7">
-            Lo que no revisas hoy, lo pagas después.
+            Esperar no te protege. Normalmente te hace perder dinero.
           </p>
           <button
             onClick={openFunnel}
