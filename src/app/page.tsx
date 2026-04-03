@@ -8,7 +8,7 @@ const EMAIL     = "info@lexfiscalia.es"; // ← reemplaza
 // ─────────────────────────────────────────────────────────────────
 
 const WA_MSG = encodeURIComponent(
-  "Hola Sonia 😊 Creo que puedo estar pagando más impuestos de lo que debería.\n\nTe dejo mis datos:\n1️⃣ Trabajo como:\n2️⃣ Ingresos aproximados:\n3️⃣ Mi duda principal es:\n4️⃣ Mi objetivo es: pagar menos / ordenar mi fiscalidad / revisar mi situación"
+  "Hola Sonia 😊 Creo que puedo estar pagando más de lo que debería y me gustaría que lo revisaras.\n\nTe dejo mis datos:\n1️⃣ Trabajo como:\n2️⃣ Ingresos aproximados:\n3️⃣ Mi duda principal es:\n4️⃣ Mi objetivo es: pagar menos / ordenar mi fiscalidad / revisar mi situación"
 );
 const WA_HREF = `https://wa.me/${WA_NUMBER}?text=${WA_MSG}`;
 
@@ -52,7 +52,7 @@ export default function LandingPage() {
       {/* ── WHATSAPP FLOATING ────────────────────────────────────── */}
       <button
         onClick={openFunnel}
-        aria-label="Contactar por WhatsApp"
+        aria-label="Hablar con una persona real ahora"
         className="fixed bottom-6 right-4 z-50 w-13 h-13 w-[52px] h-[52px] rounded-full bg-emerald-600 flex items-center justify-center shadow-2xl wa-pulse hover:scale-105 transition-transform text-white"
       >
         {WA_SVG(22)}
@@ -77,6 +77,9 @@ export default function LandingPage() {
             </button>
 
             <p className="text-[10px] text-emerald-500 uppercase tracking-widest mb-3">WhatsApp directo</p>
+            <p className="text-xs text-zinc-500 mb-2 leading-relaxed">
+              No tienes que saber de impuestos. Para eso estoy yo.
+            </p>
             <p className="text-base font-bold text-zinc-100 mb-4 leading-snug" style={{ fontFamily: "'Syne', sans-serif" }}>
               Te respondo yo personalmente.
             </p>
@@ -106,8 +109,9 @@ export default function LandingPage() {
               className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors mb-2.5"
             >
               {WA_SVG(18)}
-              Abrir WhatsApp y contar mi caso
+              Sí, quiero que revises mi caso
             </button>
+            <p className="text-[10px] text-zinc-600 text-center mb-1">Tardarás menos de 1 minuto</p>
             <button
               onClick={scrollToContact}
               className="block w-full text-center text-xs text-zinc-600 hover:text-zinc-400 py-2 transition-colors"
@@ -151,6 +155,9 @@ export default function LandingPage() {
           <br />
           <span className="text-red-400">más impuestos de los que debes.</span>
         </h1>
+        <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+          Cada mes que pasa sin revisarlo, probablemente estás perdiendo dinero sin saberlo.
+        </p>
         <p className="text-sm text-zinc-400 leading-relaxed mb-8">
           No por mala suerte. Por falta de asesoramiento real y criterio claro.
           Lo primero que hacemos es revisar tu situación sin rodeos,
@@ -162,8 +169,11 @@ export default function LandingPage() {
           className="w-full py-3.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs uppercase tracking-widest font-bold transition-colors mb-2.5"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
-          Analizar mi situación →
+          Quiero saber si estoy pagando de más
         </button>
+        <p className="text-[10px] text-zinc-600 text-center mb-2">
+          Te respondo yo personalmente. Sin bots. Sin compromiso.
+        </p>
         <Link
           href="/radar"
           className="block w-full text-center py-3 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-600 hover:text-zinc-300 transition-colors mb-6"
@@ -316,6 +326,9 @@ export default function LandingPage() {
 
       {/* ── CIERRE ───────────────────────────────────────────────── */}
       <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-10">
+        <p className="text-xs text-zinc-500 leading-relaxed mb-2">
+          No revisar tu situación fiscal no te ahorra dinero. Normalmente te hace perderlo.
+        </p>
         <p className="text-xs text-zinc-600 leading-relaxed mb-5">
           No esperes a descubrir en la próxima declaración
           lo que podrías haber ahorrado este año.
@@ -325,7 +338,7 @@ export default function LandingPage() {
           className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors border-b border-red-500/20 hover:border-red-400/40 pb-0.5"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
-          Empezar ahora →
+          Revisar mi caso ahora →
         </button>
       </section>
 
