@@ -8,9 +8,11 @@ const EMAIL     = "info@lexfiscalia.es"; // ← reemplaza
 // ─────────────────────────────────────────────────────────────────
 
 const WA_MSG = encodeURIComponent(
-  "Hola Sonia 😊 Creo que puedo estar pagando más de lo que debería y me gustaría que lo revisaras.\n\nTe dejo mis datos:\n1️⃣ Trabajo como:\n2️⃣ Ingresos aproximados:\n3️⃣ Mi duda principal es:\n4️⃣ Mi objetivo es: pagar menos / ordenar mi fiscalidad / revisar mi situación"
+  "Hola Sonia 😊\nCreo que puedo estar pagando más impuestos de los que debería y me gustaría que revisaras mi caso.\n\nTe dejo un resumen:\n- A qué me dedico:\n- Ingresos aproximados:\n- Autónomo / empresa / particular:\n- Duda principal:\n\nGracias."
 );
 const WA_HREF = `https://wa.me/${WA_NUMBER}?text=${WA_MSG}`;
+
+const SYNE = { fontFamily: "'Syne', sans-serif" };
 
 const WA_SVG = (size = 20) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -47,28 +49,25 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="bg-zinc-950 text-zinc-100 min-h-screen" style={{ fontFamily: "'DM Mono', monospace" }}>
+    <div className="bg-white text-gray-900 min-h-screen">
 
-      {/* ── WHATSAPP FLOATING ────────────────────────────────────── */}
+      {/* ── WHATSAPP FLOTANTE ────────────────────────────────────── */}
       <button
         onClick={openFunnel}
         aria-label="Hablar con una persona real ahora"
-        className="fixed bottom-6 right-4 z-50 w-13 h-13 w-[52px] h-[52px] rounded-full bg-emerald-600 flex items-center justify-center shadow-2xl wa-pulse hover:scale-105 transition-transform text-white"
+        className="fixed bottom-6 right-4 z-50 w-[52px] h-[52px] rounded-full bg-emerald-600 flex items-center justify-center shadow-lg wa-pulse hover:scale-105 transition-transform text-white"
       >
         {WA_SVG(22)}
       </button>
 
-      {/* ── MODAL / BOTTOM-SHEET ─────────────────────────────────── */}
+      {/* ── MODAL ────────────────────────────────────────────────── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={closeModal}
-          />
-          <div className="modal-sheet relative w-full sm:max-w-sm mx-0 sm:mx-4 bg-zinc-900 border border-zinc-700/60 rounded-t-2xl sm:rounded-2xl p-6 pb-8 sm:pb-6">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
+          <div className="modal-sheet relative w-full sm:max-w-sm mx-0 sm:mx-4 bg-white border border-gray-200 rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 pb-8 sm:pb-6">
             <button
               onClick={closeModal}
-              className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               aria-label="Cerrar"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -76,28 +75,31 @@ export default function LandingPage() {
               </svg>
             </button>
 
-            <p className="text-[10px] text-emerald-500 uppercase tracking-widest mb-3">WhatsApp directo</p>
-            <p className="text-xs text-zinc-500 mb-2 leading-relaxed">
-              No tienes que saber de impuestos. Para eso estoy yo.
-            </p>
-            <p className="text-base font-bold text-zinc-100 mb-4 leading-snug" style={{ fontFamily: "'Syne', sans-serif" }}>
+            <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-widest mb-2">WhatsApp directo</p>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">No tienes que saber de impuestos. Para eso estoy yo.</p>
+            <p className="text-lg font-bold text-gray-900 mb-4 leading-snug" style={SYNE}>
               Te respondo yo personalmente.
             </p>
 
-            <div className="flex gap-2 mb-5">
+            <div className="flex flex-wrap gap-1.5 mb-5">
               {["Sin bots", "Respuesta clara", "Caso confidencial"].map((t) => (
-                <span key={t} className="text-[10px] border border-zinc-700 text-zinc-400 px-2 py-1 rounded-full leading-none">
+                <span key={t} className="text-[11px] border border-gray-200 text-gray-500 px-3 py-1 rounded-full bg-gray-50 leading-none">
                   {t}
                 </span>
               ))}
             </div>
 
-            <div className="bg-zinc-800/50 border border-zinc-800 rounded-lg p-3.5 mb-5">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Para ayudarte, cuéntame</p>
-              <ul className="space-y-1">
-                {["A qué te dedicas", "Ingresos aproximados", "Tu duda principal"].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-xs text-zinc-400">
-                    <span className="w-1 h-1 rounded-full bg-zinc-600 flex-shrink-0" />
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-5">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-3">Cuéntame brevemente</p>
+              <ul className="space-y-2">
+                {[
+                  "A qué te dedicas",
+                  "Ingresos aproximados",
+                  "Si eres autónomo, empresa o particular",
+                  "Tu duda principal",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0 mt-1.5" />
                     {item}
                   </li>
                 ))}
@@ -106,15 +108,15 @@ export default function LandingPage() {
 
             <button
               onClick={handleWA}
-              className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors mb-2.5"
+              className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors mb-2"
             >
               {WA_SVG(18)}
               Sí, quiero que revises mi caso
             </button>
-            <p className="text-[10px] text-zinc-600 text-center mb-1">Tardarás menos de 1 minuto</p>
+            <p className="text-[11px] text-gray-400 text-center mb-2">Tardarás menos de 1 minuto</p>
             <button
               onClick={scrollToContact}
-              className="block w-full text-center text-xs text-zinc-600 hover:text-zinc-400 py-2 transition-colors"
+              className="block w-full text-center text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors"
             >
               Prefiero escribir por email
             </button>
@@ -123,232 +125,260 @@ export default function LandingPage() {
       )}
 
       {/* ── NAV ──────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-40 bg-zinc-950/95 border-b border-zinc-800/60">
-        <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100">
+        <div className="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <div className="relative w-4 h-4">
-              <div className="absolute inset-0 rounded-full border border-red-600/50" />
+              <div className="absolute inset-0 rounded-full border border-red-400/60" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-1 h-1 rounded-full bg-red-500 blink" />
               </div>
             </div>
-            <span className="text-xs font-bold tracking-widest uppercase text-zinc-100" style={{ fontFamily: "'Syne', sans-serif" }}>
+            <span className="text-sm font-bold tracking-tight text-gray-900" style={SYNE}>
               LexFiscalIA
             </span>
           </div>
           <button
             onClick={openFunnel}
-            className="text-xs border border-zinc-700 text-zinc-400 px-3 py-1.5 rounded hover:border-emerald-600/50 hover:text-emerald-400 transition-colors"
+            className="text-xs bg-blue-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-800 transition-colors"
           >
-            Consulta gratis →
+            Consulta gratis
           </button>
         </div>
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="max-w-xl mx-auto px-4 pt-12 pb-10">
-        <p className="text-[10px] text-zinc-600 uppercase tracking-[0.2em] mb-5">
-          Asesoría Fiscal · Inteligencia Regulatoria
+      <section className="max-w-xl mx-auto px-4 pt-14 pb-12">
+        <p className="text-[11px] text-blue-900/60 font-semibold uppercase tracking-[0.2em] mb-6">
+          Asesoría Fiscal · España
         </p>
-        <h1 className="text-[1.9rem] font-extrabold leading-tight text-zinc-100 mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>
-          Probablemente estás pagando
-          <br />
-          <span className="text-red-400">más impuestos de los que debes.</span>
+
+        <h1
+          className="text-[2.15rem] font-extrabold leading-[1.12] text-gray-900 mb-5"
+          style={SYNE}
+        >
+          Estás pagando más impuestos{" "}
+          <span className="text-red-700">de los que deberías. Y nadie te lo está diciendo.</span>
         </h1>
-        <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-          Cada mes que pasa sin revisarlo, probablemente estás perdiendo dinero sin saberlo.
-        </p>
-        <p className="text-sm text-zinc-400 leading-relaxed mb-8">
-          No por mala suerte. Por falta de asesoramiento real y criterio claro.
-          Lo primero que hacemos es revisar tu situación sin rodeos,
-          y decirte exactamente dónde hay margen de mejora.
+
+        <p className="text-base text-gray-600 leading-relaxed mb-8">
+          Reviso tu caso personalmente y te explico, de forma clara,
+          si estás pagando de más o perdiendo oportunidades fiscales.
         </p>
 
         <button
           onClick={openFunnel}
-          className="w-full py-3.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs uppercase tracking-widest font-bold transition-colors mb-2.5"
-          style={{ fontFamily: "'Syne', sans-serif" }}
+          className="w-full py-4 rounded-2xl bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold tracking-wide transition-colors mb-3"
         >
-          Quiero saber si estoy pagando de más
+          Quiero que revises mi caso
         </button>
-        <p className="text-[10px] text-zinc-600 text-center mb-2">
-          Te respondo yo personalmente. Sin bots. Sin compromiso.
+
+        <p className="text-xs text-gray-500 text-center mb-5">
+          Más de 10 años detectando errores fiscales reales · Respuesta personal en menos de 24h
         </p>
+
         <Link
           href="/radar"
-          className="block w-full text-center py-3 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-600 hover:text-zinc-300 transition-colors mb-6"
+          className="block w-full text-center py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
-          Ver el Radar BOE en vivo
+          Ver el Radar BOE en vivo →
         </Link>
 
-        <p className="text-[10px] text-zinc-600 text-center">
-          Sin compromiso · Respondo personalmente en menos de 24h · Confidencial
+        <p className="text-sm font-medium text-gray-700 text-center border-t border-gray-100 mt-6 pt-5">
+          Si no revisas tu fiscalidad, no te ahorras dinero. Lo pierdes.
+        </p>
+        <p className="text-sm text-gray-500 text-center mt-3">
+          La mayoría de personas no paga menos impuestos porque no sabe que puede hacerlo.
         </p>
       </section>
 
+      {/* ── PARA QUIÉN ───────────────────────────────────────────── */}
+      <div className="bg-gray-50 border-t border-gray-100 w-full">
+        <section className="max-w-xl mx-auto px-4 py-8">
+          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-[0.2em] mb-5">Para quién es</p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              ["Autónomos", "Si facturas, pero no tienes claro si estás optimizando impuestos."],
+              ["Profesionales", "Si tienes ingresos estables pero dudas si estás pagando de más."],
+              ["Pequeñas empresas", "Si tomas decisiones fiscales sin saber si son las mejores."],
+              ["Particulares", "Si haces la declaración sin entender realmente el resultado."],
+            ].map(([title, sub]) => (
+              <div key={title} className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-sm transition-shadow">
+                <p className="text-sm font-semibold text-gray-900 mb-1.5" style={SYNE}>{title}</p>
+                <p className="text-xs text-gray-500 leading-snug">{sub}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
       {/* ── CONFIANZA ────────────────────────────────────────────── */}
-      <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 gap-2">
+      <section className="border-t border-gray-100 max-w-xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-2 gap-2.5">
           {[
-            ["✓ Sin cuotas ocultas", "Lo que acordamos es lo que pagas."],
-            ["✓ Respondo yo, no un bot", "Sin departamentos. Sin esperas."],
-            ["✓ Primera consulta gratis", "Revisamos tu caso antes de comprometerte."],
-            ["✓ Confidencialidad total", "Tu información no sale de aquí."],
+            ["✓ Primera consulta gratis", "Reviso tu caso antes de que te comprometas a nada."],
+            ["✓ Respondo yo, no un bot", "Sin departamentos. Sin demoras. Sin automatizaciones."],
+            ["✓ Sin cuotas ocultas", "Lo que acordamos es lo que pagas. Siempre."],
+            ["✓ Confidencialidad total", "Tu información no sale de aquí. Punto."],
           ].map(([title, sub]) => (
-            <div key={title} className="border border-zinc-800/60 rounded p-3">
-              <p className="text-[11px] text-zinc-300 font-medium mb-0.5">{title}</p>
-              <p className="text-[10px] text-zinc-600 leading-tight">{sub}</p>
+            <div key={title} className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5">
+              <p className="text-xs font-semibold text-gray-800 mb-1">{title}</p>
+              <p className="text-[11px] text-gray-500 leading-tight">{sub}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── AUTORIDAD ────────────────────────────────────────────── */}
-      <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-5">Sobre mí</p>
-        <div className="flex items-start gap-4 mb-5">
-          <div className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700/60 flex-shrink-0 overflow-hidden">
-            {/* Coloca tu foto en /public/foto.jpg */}
-            <img src="/foto.jpg" alt="Sonia, asesora fiscal" className="w-full h-full object-cover" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-zinc-100 mb-0.5" style={{ fontFamily: "'Syne', sans-serif" }}>
-              Sonia {/* ← añade apellido */}
-            </p>
-            <p className="text-[10px] text-zinc-500 mb-3">
-              Asesora fiscal · Especialista en IRPF, autónomos y pequeñas empresas
-            </p>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Más de 10 años asesorando a profesionales que no quieren sorpresas
-              en la declaración. Trabajo de forma directa: sin intermediarios,
-              sin respuestas automáticas, sin perder el tiempo de nadie.
-              Si puedo ayudarte, te lo digo. Si no puedo, también.
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            ["+10 años", "Asesoría fiscal"],
-            ["BOE diario", "Monitorizado"],
-            ["<24h", "Respuesta real"],
-          ].map(([n, l], i) => (
-            <div key={i} className="border border-zinc-800/60 rounded p-3 text-center">
-              <p className="text-sm font-bold text-zinc-200" style={{ fontFamily: "'Syne', sans-serif" }}>{n}</p>
-              <p className="text-[10px] text-zinc-600 mt-0.5 leading-tight">{l}</p>
+      <div className="bg-gray-50 border-t border-gray-100 w-full">
+        <section className="max-w-xl mx-auto px-4 py-10">
+          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-[0.2em] mb-6">Quién hay detrás</p>
+          <div className="flex items-start gap-5 mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-white border border-gray-200 flex-shrink-0 overflow-hidden shadow-sm">
+              {/* Coloca tu foto en /public/foto.jpg */}
+              <img src="/foto.jpg" alt="Sonia, asesora fiscal" className="w-full h-full object-cover" />
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="pt-0.5">
+              <p className="text-base font-bold text-gray-900 mb-0.5" style={SYNE}>
+                Sonia {/* ← añade apellido */}
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                Asesora fiscal · IRPF · Autónomos · Pequeñas empresas
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Más de 10 años revisando casos reales. Analizo tu situación
+                concreta, te explico lo que veo y te digo exactamente qué
+                harías diferente. Si puedo ayudarte, te lo digo. Si no, también.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {[
+              ["+10 años", "Experiencia real"],
+              ["BOE diario", "Monitorizado"],
+              ["<24h", "Respuesta directa"],
+            ].map(([n, l], i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-2xl p-3.5 text-center shadow-sm">
+                <p className="text-base font-bold text-blue-900 mb-0.5" style={SYNE}>{n}</p>
+                <p className="text-[11px] text-gray-500 leading-tight">{l}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
 
       {/* ── BENEFICIOS ───────────────────────────────────────────── */}
-      <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-5">Qué obtienes</p>
-        <div className="space-y-2.5">
+      <section className="border-t border-gray-100 max-w-xl mx-auto px-4 py-8">
+        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-[0.2em] mb-5">Lo que resuelvo</p>
+        <div className="space-y-3">
           {[
             {
               n: "01",
-              title: "Tu situación fiscal, revisada de verdad",
-              body: "Analizo tus ingresos, tus gastos reales y tu estructura para decirte exactamente qué estás dejando de deducir. Sin generalidades.",
+              title: "Detecto dónde estás perdiendo dinero sin darte cuenta",
+              body: "Analizo tus ingresos y gastos reales. Te digo qué puedes deducir, qué no, y por qué. Sin tecnicismos, sin generalidades.",
             },
             {
               n: "02",
-              title: "El BOE filtrado por lo que te afecta",
-              body: "Monitorizo el Boletín Oficial cada día y clasifico por impacto real. Solo te aviso si algo cambia lo que te afecta directamente.",
+              title: "Te explico en claro lo que el BOE no explica",
+              body: "Reviso el Boletín Oficial cada día. Si algo cambia lo que te toca pagar o declarar, lo sabes antes que la mayoría.",
             },
             {
               n: "03",
-              title: "Acceso directo a mí, sin burocracia",
-              body: "Me escribes, te respondo yo. Sin formularios de soporte, sin colas, sin respuestas automáticas. Un punto de contacto, siempre.",
+              title: "Te digo exactamente qué deberías cambiar",
+              body: "Nada de bots, departamentos ni formularios. Me escribes, te respondo personalmente. Sin esperas, sin intermediarios.",
             },
           ].map((item) => (
-            <div key={item.n} className="border border-zinc-800 rounded bg-zinc-900/30 p-4 flex gap-3">
-              <span className="text-zinc-700 text-xs flex-shrink-0 pt-px" style={{ fontFamily: "'Syne', sans-serif" }}>{item.n}</span>
+            <div key={item.n} className="border border-gray-200 rounded-2xl bg-white p-5 flex gap-4 hover:shadow-sm transition-shadow">
+              <span className="text-blue-900 text-xs font-bold flex-shrink-0 pt-0.5" style={SYNE}>{item.n}</span>
               <div>
-                <p className="text-xs font-bold text-zinc-200 mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>{item.title}</p>
-                <p className="text-xs text-zinc-500 leading-relaxed">{item.body}</p>
+                <p className="text-sm font-semibold text-gray-900 mb-1.5" style={SYNE}>{item.title}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{item.body}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CTA RADAR ────────────────────────────────────────────── */}
-      <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <div className="border border-red-500/15 rounded bg-red-500/5 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500 blink" />
-            <p className="text-[10px] text-red-500 uppercase tracking-widest">Monitor en vivo</p>
+      {/* ── RADAR CTA ────────────────────────────────────────────── */}
+      <div className="bg-gray-50 border-t border-gray-100 w-full">
+        <section className="max-w-xl mx-auto px-4 py-8">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 blink" />
+              <p className="text-[11px] text-gray-500 font-semibold uppercase tracking-widest">Herramienta incluida</p>
+            </div>
+            <p className="text-sm font-bold text-gray-900 mb-1.5" style={SYNE}>
+              Radar BOE PRO — activo y en vivo.
+            </p>
+            <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+              Cada disposición del Boletín Oficial clasificada por impacto real:
+              qué exige acción, qué revisar, qué ignorar.
+            </p>
+            <Link
+              href="/radar"
+              className="block w-full text-center py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 hover:text-gray-800 transition-colors"
+            >
+              Abrir Radar BOE →
+            </Link>
           </div>
-          <p className="text-sm font-bold text-zinc-100 mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>
-            El BOE de hoy, ya clasificado.
-          </p>
-          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-            Comprueba qué disposiciones requieren acción inmediata hoy,
-            cuáles revisar y cuáles ignorar sin riesgo.
-          </p>
-          <Link
-            href="/radar"
-            className="block w-full text-center py-3 rounded border border-red-500/25 text-red-400 text-xs uppercase tracking-widest hover:bg-red-500/8 transition-colors"
-          >
-            Abrir Radar BOE →
-          </Link>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* ── CONTACTO ─────────────────────────────────────────────── */}
-      <section id="contacto" className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-8">
-        <p className="text-[10px] text-zinc-700 uppercase tracking-[0.2em] mb-2">Hablamos</p>
-        <p className="text-lg font-bold text-zinc-100 mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>
-          ¿Tienes dudas sobre tu fiscalidad?
+      <section id="contacto" className="border-t border-gray-100 max-w-xl mx-auto px-4 py-10">
+        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-[0.2em] mb-3">Hablamos</p>
+        <p className="text-2xl font-bold text-gray-900 mb-2" style={SYNE}>
+          ¿Cuánto estás perdiendo sin saberlo?
         </p>
-        <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
-          Cuéntame tu situación. En menos de 24h te digo
-          si puedo ayudarte, cómo y qué pasos dar.
-          Sin rodeos, sin venderte lo que no necesitas.
+        <p className="text-sm text-gray-500 mb-7 leading-relaxed">
+          Cuéntame tu situación. En menos de 24h te digo exactamente
+          si puedo ayudarte y qué harías diferente.
+          Sin rodeos. Sin venderte lo que no necesitas.
         </p>
         <button
           onClick={openFunnel}
-          className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium transition-colors mb-2.5"
+          className="flex items-center justify-center gap-2.5 w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors mb-3"
         >
           {WA_SVG(18)}
           Escribir por WhatsApp
         </button>
         <a
           href={`mailto:${EMAIL}`}
-          className="block w-full text-center py-2.5 rounded border border-zinc-800 text-zinc-500 text-xs hover:border-zinc-600 hover:text-zinc-300 transition-colors mb-5"
+          className="block w-full text-center py-3 rounded-2xl border border-gray-200 text-gray-500 text-sm font-medium hover:border-gray-300 hover:text-gray-700 transition-colors mb-5"
         >
           Enviar email
         </a>
-        <p className="text-[10px] text-zinc-700 text-center leading-relaxed">
-          Sin bots · Sin automatizaciones · Respondo yo · Confidencial
+        <p className="text-xs text-gray-400 text-center">
+          Sin bots · Respondo yo · Confidencial · Sin compromiso
         </p>
       </section>
 
       {/* ── CIERRE ───────────────────────────────────────────────── */}
-      <section className="border-t border-zinc-800/50 max-w-xl mx-auto px-4 py-10">
-        <p className="text-xs text-zinc-500 leading-relaxed mb-2">
-          No revisar tu situación fiscal no te ahorra dinero. Normalmente te hace perderlo.
-        </p>
-        <p className="text-xs text-zinc-600 leading-relaxed mb-5">
-          No esperes a descubrir en la próxima declaración
-          lo que podrías haber ahorrado este año.
-        </p>
-        <button
-          onClick={openFunnel}
-          className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors border-b border-red-500/20 hover:border-red-400/40 pb-0.5"
-          style={{ fontFamily: "'Syne', sans-serif" }}
-        >
-          Revisar mi caso ahora →
-        </button>
-      </section>
+      <div className="bg-gray-50 border-t border-gray-100 w-full">
+        <section className="max-w-xl mx-auto px-4 py-12">
+          <p className="text-lg font-bold text-gray-900 leading-snug mb-2" style={SYNE}>
+            Lo que no revisas hoy, lo pagas después.
+          </p>
+          <p className="text-sm text-gray-500 leading-relaxed mb-7">
+            Esperar no te protege. Normalmente te hace perder dinero.
+          </p>
+          <button
+            onClick={openFunnel}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-900 hover:text-blue-700 transition-colors border-b-2 border-blue-200 hover:border-blue-400 pb-0.5"
+            style={SYNE}
+          >
+            Revisar mi caso ahora →
+          </button>
+        </section>
+      </div>
 
       {/* ── FOOTER ───────────────────────────────────────────────── */}
-      <footer className="border-t border-zinc-900 max-w-xl mx-auto px-4 py-5">
+      <footer className="border-t border-gray-100 bg-white max-w-xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-zinc-800 uppercase tracking-widest" style={{ fontFamily: "'Syne', sans-serif" }}>
+          <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest" style={SYNE}>
             LexFiscalIA
           </span>
-          <span className="text-[10px] text-zinc-800">© 2025</span>
+          <span className="text-xs text-gray-400">© 2025</span>
         </div>
       </footer>
 
