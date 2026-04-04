@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import {
-  analyzeOfficialSource,
   generateXVersion,
   generateWhatsAppVersion,
   type SourceType,
@@ -134,10 +133,20 @@ export default function ContentClient() {
     setActiveVersion(null);
     setLoading(true);
     try {
-      const data = await analyzeOfficialSource({ sourceType, url: trimmed });
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed, sourceType }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json() as AnalysisResult;
       setResult(data);
-    } catch {
-      setError("Error al procesar la fuente. Comprueba la URL e inténtalo de nuevo.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error desconocido";
+      setError(msg || "Error al procesar la fuente. Comprueba la URL e inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }
