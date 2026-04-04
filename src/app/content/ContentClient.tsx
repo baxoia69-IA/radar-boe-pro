@@ -2,17 +2,25 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import type { UrlAnalysis } from "@/app/api/analyze-url/route";
+import type { UrlAnalysis, UrlAnalysisError } from "@/app/api/analyze-url/route";
 
 // ─── CONSTANTES ──────────────────────────────────────────────────
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
+// Ejemplos que son documentos concretos, no índices
 const EXAMPLE_URLS = [
   "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2023-24823",
-  "https://sede.agenciatributaria.gob.es/Sede/todas-noticias.html",
+  "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-3879",
 ];
 
 type CopyState = Record<string, boolean>;
+
+// Estado de error enriquecido
+interface ErrorState {
+  message: string;
+  code: UrlAnalysisError["code"] | null;
+  suggestion?: string;
+}
 
 // ─── HELPERS ─────────────────────────────────────────────────────
 function useCopy(): [CopyState, (text: string, key: string) => void] {
@@ -113,13 +121,16 @@ export default function ContentClient() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<UrlAnalysis | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [activeVersion, setActiveVersion] = useState<"x" | "whatsapp" | null>(null);
   const [copied, onCopy] = useCopy();
 
   const analyze = useCallback(async () => {
     const trimmed = url.trim();
-    if (!trimmed) { setError("Introduce una URL antes de analizar."); return; }
+    if (!trimmed) {
+      setError({ message: "Introduce una URL antes de analizar.", code: null });
+      return;
+    }
     setError(null);
     setResult(null);
     setActiveVersion(null);
@@ -130,11 +141,21 @@ export default function ContentClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: trimmed }),
       });
-      const data = await res.json() as UrlAnalysis & { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      const data = await res.json() as UrlAnalysis & UrlAnalysisError;
+      if (!res.ok) {
+        setError({
+          message: data.error ?? `HTTP ${res.status}`,
+          code: data.code ?? null,
+          suggestion: data.suggestion,
+        });
+        return;
+      }
       setResult(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error desconocido");
+      setError({
+        message: e instanceof Error ? e.message : "Error de conexión. Inténtalo de nuevo.",
+        code: "FETCH_ERROR",
+      });
     } finally {
       setLoading(false);
     }
@@ -193,7 +214,7 @@ export default function ContentClient() {
                 <input
                   type="url"
                   value={url}
-                  onChange={(e) => { setUrl(e.target.value); setError(null); }}
+                  onChange={(e) => { setUrl(e.target.value); if (error) setError(null); }}
                   onKeyDown={(e) => e.key === "Enter" && analyze()}
                   placeholder="https://www.boe.es/... o https://sede.agenciatributaria.gob.es/..."
                   className="flex-1 text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900/20 placeholder:text-gray-300 bg-white"
@@ -206,13 +227,34 @@ export default function ContentClient() {
                 </button>
               </div>
               {error && (
-                <p className="text-xs text-red-600 flex items-start gap-1.5">
-                  <svg className="flex-shrink-0 mt-0.5" width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M8 5v4M8 11v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                  {error}
-                </p>
+                <div className={`rounded-xl border p-3.5 flex flex-col gap-1.5 ${
+                  error.code === "INDEX_PAGE"
+                    ? "bg-amber-50 border-amber-200"
+                    : "bg-red-50 border-red-200"
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      {error.code === "INDEX_PAGE" ? (
+                        <path d="M8 2L1.5 13.5h13L8 2z" stroke="#b45309" strokeWidth="1.4" strokeLinejoin="round" />
+                      ) : (
+                        <circle cx="8" cy="8" r="7" stroke="#dc2626" strokeWidth="1.5" />
+                      )}
+                      <path d="M8 5.5v4M8 11v.5" stroke={error.code === "INDEX_PAGE" ? "#b45309" : "#dc2626"} strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                    <p className={`text-xs font-medium leading-relaxed ${
+                      error.code === "INDEX_PAGE" ? "text-amber-800" : "text-red-700"
+                    }`}>
+                      {error.message}
+                    </p>
+                  </div>
+                  {error.suggestion && (
+                    <p className={`text-xs ml-5 leading-relaxed ${
+                      error.code === "INDEX_PAGE" ? "text-amber-700" : "text-red-600"
+                    }`}>
+                      {error.suggestion}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -271,10 +313,17 @@ export default function ContentClient() {
                   <span className="text-sm font-semibold text-gray-700" style={SYNE}>
                     Explicación para el contribuyente
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                    GPT-4o
-                  </span>
+                  {result.analysisSource === "real" ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                      Análisis real · {result.extractedChars.toLocaleString()} chars
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                      Contenido parcial · {result.extractedChars} chars
+                    </span>
+                  )}
                 </div>
                 <CopyBtn
                   text={toWAVersion(result)}
