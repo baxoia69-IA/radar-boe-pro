@@ -6,8 +6,18 @@ import {
   generateXVersion,
   generateWhatsAppVersion,
   type SourceType,
-  type AnalysisResult,
 } from "@/lib/contentEngine";
+
+// AnalysisResult sin generationMode (eliminado con el fallback)
+type AnalysisResult = {
+  title: string;
+  summary: string;
+  affectedAudience: string;
+  practicalImpact: string;
+  actionPoints: string[];
+  sourceUrl: string;
+  cta: string;
+};
 
 // ─── CONSTANTES ──────────────────────────────────────────────────
 const SYNE = { fontFamily: "'Syne', sans-serif" };
@@ -305,17 +315,10 @@ export default function ContentClient() {
                   <h3 className="text-sm font-semibold text-gray-700" style={SYNE}>
                     Nota editorial generada
                   </h3>
-                  {result.generationMode === "ai" ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                      IA real
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
-                      Modo respaldo
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    GPT-4o
+                  </span>
                 </div>
                 <CopyBtn text={fullNote} label="Copiar nota completa" copyKey="full" copied={copied} setCopied={setCopied} />
               </div>
