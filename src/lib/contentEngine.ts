@@ -14,26 +14,143 @@ export interface AnalysisResult {
   actionPoints: string[];
   sourceUrl: string;
   cta: string;
+  /** Indica si el resultado fue generado por IA real o por el fallback mock. */
+  generationMode: "ai" | "fallback";
 }
 
-// ─── DETECCIÓN DE TEMA POR URL ────────────────────────────────────
+// ─── PROMPT ──────────────────────────────────────────────────────
+/**
+ * Construye el prompt que se enviará al LLM.
+ * El modelo debe devolver un JSON plano con los 7 campos exactos.
+ */
+function buildPrompt(input: AnalysisInput): string {
+  const sourceLabel =
+    input.sourceType === "AEAT"
+      ? "una nota informativa de la Agencia Tributaria (AEAT)"
+      : "una disposición publicada en el Boletín Oficial del Estado (BOE)";
+
+  return `Eres un asesor fiscal experto en legislación española. Analiza el contenido de ${sourceLabel} disponible en la siguiente URL y genera una nota editorial estructurada en JSON.
+
+URL: ${input.url}
+
+Requisitos de estilo:
+- Lenguaje claro, profesional y útil para autónomos, pymes y particulares.
+- Sin jerga institucional ni frases vacías.
+- Tono directo: explica qué cambia, a quién afecta y qué deben hacer.
+
+Devuelve ÚNICAMENTE el siguiente JSON válido, sin markdown ni explicaciones adicionales:
+
+{
+  "title": "Titular claro y específico (máx. 120 caracteres)",
+  "summary": "Resumen del cambio normativo en 2-3 frases. Qué cambia, por qué importa.",
+  "affectedAudience": "A quién afecta exactamente: perfil, actividad o situación fiscal.",
+  "practicalImpact": "Impacto concreto en la declaración, la liquidez o la planificación fiscal.",
+  "actionPoints": [
+    "Paso 1 de acción concreto y accionable",
+    "Paso 2 de acción concreto y accionable",
+    "Paso 3 de acción concreto y accionable",
+    "Paso 4 de acción concreto y accionable"
+  ],
+  "cta": "Llamada a la acción directa. Qué debería hacer el lector ahora mismo (1-2 frases)."
+}`;
+}
+
+// ─── LLAMADA AL LLM ───────────────────────────────────────────────
+/**
+ * Llama al LLM y devuelve el texto crudo de la respuesta.
+ *
+ * INTEGRACIÓN — elige uno de estos dos bloques y activa el que corresponda:
+ *
+ * ── OPCIÓN A: Claude (Anthropic) ──────────────────────────────────
+ *   import Anthropic from "@anthropic-ai/sdk";
+ *   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+ *   const msg = await client.messages.create({
+ *     model: "claude-opus-4-6",
+ *     max_tokens: 1024,
+ *     messages: [{ role: "user", content: prompt }],
+ *   });
+ *   return (msg.content[0] as { text: string }).text;
+ *
+ * ── OPCIÓN B: OpenAI ──────────────────────────────────────────────
+ *   import OpenAI from "openai";
+ *   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+ *   const completion = await openai.chat.completions.create({
+ *     model: "gpt-4o",
+ *     messages: [{ role: "user", content: prompt }],
+ *   });
+ *   return completion.choices[0].message.content ?? "";
+ *
+ * Hasta que no se active una opción, la función lanza un error
+ * para que analyzeOfficialSource use el fallback automáticamente.
+ */
+async function callLLM(prompt: string): Promise<string> {
+  // TODO: activar OPCIÓN A o OPCIÓN B (ver comentario arriba)
+  void prompt; // evita el warning de unused variable
+  throw new Error("LLM_NOT_CONFIGURED");
+}
+
+// ─── PARSER DE RESPUESTA ──────────────────────────────────────────
+/**
+ * Parsea el texto JSON que devuelve el LLM y garantiza la estructura correcta.
+ * Extrae el primer bloque JSON si el modelo devuelve texto adicional.
+ */
+function parseResponse(raw: string, sourceUrl: string): AnalysisResult {
+  // Extraer el primer objeto JSON aunque el modelo añada texto alrededor
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("PARSE_ERROR: no JSON found in LLM response");
+
+  const parsed = JSON.parse(match[0]) as Partial<AnalysisResult>;
+
+  return {
+    title: String(parsed.title ?? "").trim() || "Sin título",
+    summary: String(parsed.summary ?? "").trim() || "Sin resumen disponible.",
+    affectedAudience:
+      String(parsed.affectedAudience ?? "").trim() || "No especificado.",
+    practicalImpact:
+      String(parsed.practicalImpact ?? "").trim() || "No especificado.",
+    actionPoints: Array.isArray(parsed.actionPoints)
+      ? parsed.actionPoints.map((p) => String(p).trim()).filter(Boolean)
+      : ["Revisar la fuente oficial para más detalle."],
+    sourceUrl,
+    cta: String(parsed.cta ?? "").trim() || "Consulta con tu asesor fiscal.",
+    generationMode: "ai",
+  };
+}
+
+// ─── FALLBACK MOCK ────────────────────────────────────────────────
+/**
+ * Contenido de respaldo por tema.
+ * Se usa cuando el LLM no está disponible o falla.
+ */
 function detectTopic(url: string): string {
   const u = url.toLowerCase();
   if (u.includes("iva")) return "iva";
   if (u.includes("irpf") || u.includes("renta")) return "irpf";
   if (u.includes("autonom")) return "autonomos";
-  if (u.includes("declaracion") || u.includes("modelo-100") || u.includes("modelo100")) return "declaracion";
+  if (
+    u.includes("declaracion") ||
+    u.includes("modelo-100") ||
+    u.includes("modelo100")
+  )
+    return "declaracion";
   if (u.includes("modelo")) return "modelo";
   if (u.includes("deduccion") || u.includes("deducción")) return "deduccion";
-  if (u.includes("sociedad") || u.includes("impuesto-sobre-sociedades")) return "sociedades";
-  if (u.includes("sancion") || u.includes("sanción") || u.includes("infraccion")) return "sancion";
+  if (u.includes("sociedad") || u.includes("impuesto-sobre-sociedades"))
+    return "sociedades";
+  if (
+    u.includes("sancion") ||
+    u.includes("sanción") ||
+    u.includes("infraccion")
+  )
+    return "sancion";
   return "general";
 }
 
-// ─── CONTENIDO MOCK POR TEMA Y FUENTE ────────────────────────────
-// Para sustituir: reemplaza esta función por una llamada a tu API/IA real.
-function getMockContent(topic: string, sourceType: SourceType): Omit<AnalysisResult, "sourceUrl"> {
-  const base: Record<string, Omit<AnalysisResult, "sourceUrl">> = {
+function fallbackMock(input: AnalysisInput): AnalysisResult {
+  const topic = detectTopic(input.url);
+  const s = input.sourceType;
+
+  const base: Record<string, Omit<AnalysisResult, "sourceUrl" | "generationMode">> = {
     iva: {
       title: "Criterio actualizado sobre deducción del IVA en operaciones mixtas",
       summary:
@@ -168,11 +285,11 @@ function getMockContent(topic: string, sourceType: SourceType): Omit<AnalysisRes
     },
     general: {
       title:
-        sourceType === "BOE"
+        s === "BOE"
           ? "Nueva disposición oficial publicada en el BOE con impacto fiscal"
           : "Nueva nota informativa de la AEAT con criterio relevante para contribuyentes",
       summary:
-        sourceType === "BOE"
+        s === "BOE"
           ? "El Boletín Oficial del Estado publica una nueva disposición normativa que modifica aspectos del régimen fiscal vigente. El cambio introduce nuevas obligaciones formales o modifica el tratamiento de determinadas operaciones."
           : "La Agencia Tributaria publica nueva información relevante sobre la interpretación o aplicación de la normativa fiscal. El criterio afecta a contribuyentes con determinadas situaciones o tipos de renta.",
       affectedAudience:
@@ -189,30 +306,31 @@ function getMockContent(topic: string, sourceType: SourceType): Omit<AnalysisRes
     },
   };
 
-  return base[topic] ?? base["general"];
+  const content = base[topic] ?? base["general"];
+  return { ...content, sourceUrl: input.url, generationMode: "fallback" };
 }
 
 // ─── FUNCIÓN PRINCIPAL ────────────────────────────────────────────
-// Para sustituir por IA real: reemplaza el cuerpo de esta función.
-// La interfaz de entrada/salida no necesita cambiar.
+/**
+ * Intenta generar el análisis vía IA (callLLM).
+ * Si el LLM no está configurado o falla, devuelve el fallback mock.
+ * Nunca lanza excepción: la UI siempre recibe un resultado válido.
+ */
 export async function analyzeOfficialSource(
   input: AnalysisInput
 ): Promise<AnalysisResult> {
-  // Simula latencia de procesamiento
-  await new Promise((r) => setTimeout(r, 900));
-
-  const topic = detectTopic(input.url);
-  const content = getMockContent(topic, input.sourceType);
-
-  return {
-    ...content,
-    sourceUrl: input.url,
-  };
+  try {
+    const prompt = buildPrompt(input);
+    const raw = await callLLM(prompt);
+    return parseResponse(raw, input.url);
+  } catch {
+    // LLM no configurado, sin conexión, o respuesta malformada → fallback
+    await new Promise((r) => setTimeout(r, 900)); // simula latencia
+    return fallbackMock(input);
+  }
 }
 
 // ─── GENERADORES DE VERSIONES ─────────────────────────────────────
-// Para sustituir: reemplaza el cuerpo de cada función por la llamada a tu IA.
-
 export function generateXVersion(note: AnalysisResult): string {
   const points = note.actionPoints.slice(0, 3);
   return `${note.title}
