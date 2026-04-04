@@ -291,10 +291,23 @@ export default function ContentClient() {
           {result && (
             <div className="flex flex-col gap-4">
               {/* Cabecera de resultados */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700" style={SYNE}>
-                  Nota editorial generada
-                </h3>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-700" style={SYNE}>
+                    Nota editorial generada
+                  </h3>
+                  {result.generationMode === "ai" ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                      IA real
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
+                      Modo respaldo
+                    </span>
+                  )}
+                </div>
                 <CopyBtn text={fullNote} label="Copiar nota completa" copyKey="full" copied={copied} setCopied={setCopied} />
               </div>
 

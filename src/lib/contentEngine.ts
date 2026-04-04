@@ -57,36 +57,31 @@ Devuelve ÚNICAMENTE el siguiente JSON válido, sin markdown ni explicaciones ad
 
 // ─── LLAMADA AL LLM ───────────────────────────────────────────────
 /**
- * Llama al LLM y devuelve el texto crudo de la respuesta.
+ * Llama a OpenAI y devuelve el texto crudo de la respuesta.
+ * Si OPENAI_API_KEY no está definida, lanza un error y analyzeOfficialSource
+ * usa el fallback automáticamente — sin romper la UI.
  *
- * INTEGRACIÓN — elige uno de estos dos bloques y activa el que corresponda:
- *
- * ── OPCIÓN A: Claude (Anthropic) ──────────────────────────────────
- *   import Anthropic from "@anthropic-ai/sdk";
- *   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
- *   const msg = await client.messages.create({
- *     model: "claude-opus-4-6",
- *     max_tokens: 1024,
- *     messages: [{ role: "user", content: prompt }],
- *   });
- *   return (msg.content[0] as { text: string }).text;
- *
- * ── OPCIÓN B: OpenAI ──────────────────────────────────────────────
- *   import OpenAI from "openai";
- *   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
- *   const completion = await openai.chat.completions.create({
- *     model: "gpt-4o",
- *     messages: [{ role: "user", content: prompt }],
- *   });
- *   return completion.choices[0].message.content ?? "";
- *
- * Hasta que no se active una opción, la función lanza un error
- * para que analyzeOfficialSource use el fallback automáticamente.
+ * Variable de entorno requerida: OPENAI_API_KEY
+ * Añadirla en .env.local (desarrollo) o en las variables del proveedor de
+ * despliegue (Vercel → Settings → Environment Variables).
  */
 async function callLLM(prompt: string): Promise<string> {
-  // TODO: activar OPCIÓN A o OPCIÓN B (ver comentario arriba)
-  void prompt; // evita el warning de unused variable
-  throw new Error("LLM_NOT_CONFIGURED");
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+
+  // Importación dinámica para evitar que el bundle del cliente cargue la SDK
+  const { default: OpenAI } = await import("openai");
+  const openai = new OpenAI({ apiKey });
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",          // rápido, barato, suficiente para JSON estructurado
+    max_tokens: 1024,
+    temperature: 0.3,              // respuestas consistentes y precisas
+    response_format: { type: "json_object" }, // fuerza JSON válido
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  return completion.choices[0].message.content ?? "";
 }
 
 // ─── PARSER DE RESPUESTA ──────────────────────────────────────────
