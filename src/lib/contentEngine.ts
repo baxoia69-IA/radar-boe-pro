@@ -27,34 +27,55 @@ export function buildPrompt(input: AnalysisInput): { system: string; user: strin
       ? "Agencia Tributaria española (AEAT)"
       : "Boletín Oficial del Estado español (BOE)";
 
-  const system = `Eres un asesor fiscal senior especializado en legislación tributaria española con más de 15 años de experiencia asesorando a autónomos, pymes y particulares. Tu misión es transformar documentos fiscales oficiales en análisis claros, concretos y directamente útiles para el ciudadano.
+  const system = `Eres el mejor comunicador fiscal de España. Combinas el rigor técnico de un inspector de Hacienda con la claridad de un periodista económico y el instinto de un asesor que cobra por resultados, no por horas.
 
-Principios de escritura:
-- Lenguaje directo: ninguna frase que no aporte valor concreto.
-- Sin jerga institucional: nada de "en virtud de lo establecido en", "a los efectos oportunos", "la presente disposición".
-- Cuantifica siempre que sea posible: porcentajes, importes, plazos exactos.
-- Señala el riesgo real si no se actúa: multa, recargo, pérdida de deducción.
-- Tono de asesor que conoce el caso del lector, no de funcionario que emite comunicado.`;
+Tu trabajo es tomar documentos oficiales áridos e ininteligibles y convertirlos en contenido que la gente entienda, guarde y comparta porque les afecta directamente al bolsillo.
 
-  const user = `Analiza el contenido del siguiente documento oficial de la ${sourceLabel}:
+MENTALIDAD:
+Escribes como si le estuvieras explicando el cambio a un amigo autónomo, propietario de una pyme o particular que tiene que presentar declaraciones. No al abogado de su empresa. A él directamente.
+
+REGLAS DE ORO:
+1. Si hay una cifra (€, %, fecha), ponla. Los números son credibilidad.
+2. El riesgo de no actuar siempre es más motivador que el beneficio de actuar. Úsalo.
+3. Nada de frases que empiece por "La presente disposición", "En virtud de", "A los efectos de", "Cabe destacar que". Si lo escribes así, estás fallando.
+4. El titular tiene que generar una reacción: "Esto me afecta a mí. Tengo que leerlo."
+5. Cada punto de acción debe poder hacerse hoy, no "consultar con un experto en algún momento".
+
+EJEMPLOS DE TITULAR MALO vs BUENO:
+✗ "Modificación del régimen de estimación directa simplificada"
+✓ "Hacienda cambia cómo calculas tus gastos deducibles — y puede salirte caro si no lo revisas"
+
+✗ "Actualización normativa sobre cotización de autónomos"
+✓ "Tu cuota de autónomo va a cambiar. Así calculas si subes o bajas"
+
+EJEMPLOS DE CTA MALO vs BUENO:
+✗ "Consulte con su asesor fiscal para más información"
+✓ "El próximo trimestre es en X semanas. Si no calculas esto antes, pagas de más — o te arriesgas a un recargo"`;
+
+  const user = `Analiza el siguiente documento oficial de la ${sourceLabel}:
 
 URL: ${input.url}
 
-Genera un análisis editorial profesional y devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta (sin markdown, sin texto adicional):
+Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta. Sin markdown. Sin texto antes o después del JSON.
 
 {
-  "title": "Titular periodístico: qué cambia y para quién. Máx. 100 caracteres. Sin verbo 'ser' al inicio.",
-  "summary": "3-4 frases. Explica QUÉ cambia, POR QUÉ importa y DESDE CUÁNDO aplica. Incluye cifras concretas si el documento las menciona. Evita parafrasear el título de la norma.",
-  "affectedAudience": "Segmentos exactos afectados: tipo de contribuyente, régimen fiscal, sector o situación concreta. Si hay umbrales (ingresos, plantilla, actividad), menciónalos.",
-  "practicalImpact": "Consecuencia tangible en euros, porcentajes o plazos cuando sea posible. Qué declaración, cuota o liquidación se ve afectada. Qué ocurre si no se adaptan.",
+  "title": "TITULAR DE IMPACTO. Máx. 110 caracteres. Debe activar la lectura: qué cambia + consecuencia concreta o para quién. Nada de títulos de BOE literales. Empieza por el cambio o su consecuencia, no por 'La AEAT' ni 'El BOE'.",
+
+  "summary": "Exactamente 3 frases. F1: qué cambia y desde cuándo (con fecha si la hay). F2: por qué importa en términos económicos o de riesgo. F3: quién se lleva la peor o mejor parte. Ninguna frase supera 25 palabras. Cero gerundios innecesarios.",
+
+  "affectedAudience": "Lista los segmentos afectados con máxima precisión. Incluye: tipo de contribuyente (autónomo, sociedad, particular), régimen fiscal si aplica, sector si es específico, umbrales de ingresos o plantilla si los hay. Si afecta a todos, explica cómo afecta diferente a cada perfil.",
+
+  "practicalImpact": "Párrafo de 3-5 frases centrado en dinero y riesgo. Cuantifica: cuánto puede subir o bajar una cuota, qué porcentaje de deducción se pierde, cuál es la sanción por incumplir, qué plazo hay. Si el documento no da cifras exactas, da rangos realistas basados en casos típicos. Termina con la consecuencia de no actuar.",
+
   "actionPoints": [
-    "Acción 1: verbo imperativo + qué hacer + cuándo o con qué herramienta",
-    "Acción 2: verbo imperativo + qué hacer + cuándo o con qué herramienta",
-    "Acción 3: verbo imperativo + qué hacer + cuándo o con qué herramienta",
-    "Acción 4: verbo imperativo + qué hacer + cuándo o con qué herramienta",
-    "Acción 5: verbo imperativo + qué hacer + cuándo o con qué herramienta"
+    "Verbo imperativo en 2ª persona + acción específica + contexto (cuándo, con qué dato, en qué apartado). Ej: 'Revisa tu base de cotización actual en Seguridad Social y compárala con tu rendimiento neto estimado de este año'",
+    "Segunda acción. Distinta a la anterior. Accionable hoy.",
+    "Tercera acción. Puede ser preventiva o de documentación.",
+    "Cuarta acción. Si hay plazo inminente, ponlo aquí.",
+    "Quinta acción. Cierre: qué guardar, qué confirmar, qué evitar."
   ],
-  "cta": "1-2 frases. Urgencia real (fecha límite, coste de esperar). Qué pérdida concreta se evita actuando ahora. No usar 'consulta con tu asesor' como única salida."
+
+  "cta": "2 frases máximo. Primera: urgencia con fecha o coste concreto ('El trimestre cierra el X', 'Cada mes de retraso suma un X% de recargo'). Segunda: qué acción inmediata y específica recomiendas hacer ahora mismo. No 'llama a tu asesor'. Sí 'Calcula tu nueva base en 10 minutos con la calculadora de la AEAT'."
 }`;
 
   return { system, user };
@@ -158,37 +179,61 @@ export async function analyzeOfficialSource(
 }
 
 // ─── GENERADORES DE VERSIONES ─────────────────────────────────────
+
+/**
+ * Versión para X/Twitter.
+ * Estructura: gancho → tensión → checklist mínimo → CTA → fuente → hashtags
+ * Diseñada para retención y compartición. Tono directo, sin suavizadores.
+ */
 export function generateXVersion(note: AnalysisResult): string {
-  const points = note.actionPoints.slice(0, 3);
-  return `${note.title}
+  // Primera frase del resumen como gancho independiente
+  const hook = note.summary.split(/[.!?]/)[0].trim();
+  // Dos puntos de acción más concretos (los del medio suelen ser los más accionables)
+  const points = note.actionPoints.slice(1, 3);
 
-${note.summary.split(".")[0]}.
+  return `⚠️ ${note.title}
 
-Qué revisar ahora:
+${hook}.
+
+${note.practicalImpact.split(/[.!?]/)[0].trim()}.
+
+Qué hacer ahora:
 ${points.map((p) => `→ ${p}`).join("\n")}
 
 ${note.cta}
 
-Fuente oficial: ${note.sourceUrl}
+🔗 ${note.sourceUrl}
 
-#Fiscal #Impuestos #AEAT #Autónomos`;
+#Fiscal #Hacienda #Autónomos #IRPF #IVA`;
 }
 
+/**
+ * Versión para WhatsApp.
+ * Estructura: contexto → impacto → afectados → checklist → urgencia
+ * Tono cercano, como un mensaje de un asesor de confianza.
+ * Usa negrita (*texto*) que WhatsApp renderiza nativamente.
+ */
 export function generateWhatsAppVersion(note: AnalysisResult): string {
-  const points = note.actionPoints.slice(0, 4);
-  return `Hola 👋
+  const points = note.actionPoints.slice(0, 5);
 
-*${note.title}*
+  return `Hola,
+
+Te mando esto porque puede afectarte directamente.
+
+📌 *${note.title}*
 
 ${note.summary}
 
 *¿A quién afecta?*
 ${note.affectedAudience}
 
-*Qué deberías revisar:*
-${points.map((p) => `• ${p}`).join("\n")}
+*Impacto real:*
+${note.practicalImpact}
 
-${note.cta}
+*Lo que tienes que revisar ahora:*
+${points.map((p, i) => `${i + 1}. ${p}`).join("\n")}
+
+⏰ ${note.cta}
 
 Fuente oficial: ${note.sourceUrl}`;
 }
