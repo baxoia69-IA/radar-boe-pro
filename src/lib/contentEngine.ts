@@ -4,6 +4,9 @@ export type SourceType = "AEAT" | "BOE";
 export interface AnalysisInput {
   sourceType: SourceType;
   url: string;
+  /** Texto del documento pre-extraído. Cuando está presente la IA analiza
+   *  el contenido real en lugar de inferirlo desde la URL. */
+  extractedContent?: string;
 }
 
 export interface AnalysisResult {
@@ -52,10 +55,15 @@ EJEMPLOS DE CTA MALO vs BUENO:
 ✗ "Consulte con su asesor fiscal para más información"
 ✓ "El próximo trimestre es en X semanas. Si no calculas esto antes, pagas de más — o te arriesgas a un recargo"`;
 
+  // Si hay contenido pre-extraído del documento, incluirlo como contexto primario
+  const contentBlock = input.extractedContent
+    ? `\nContenido extraído del documento (primeros 7000 caracteres):\n---\n${input.extractedContent.slice(0, 7000)}\n---\n`
+    : "\n(Analiza el documento disponible en la URL con tu conocimiento sobre normativa fiscal española.)\n";
+
   const user = `Analiza el siguiente documento oficial de la ${sourceLabel}:
 
 URL: ${input.url}
-
+${contentBlock}
 Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta. Sin markdown. Sin texto antes o después del JSON.
 
 {

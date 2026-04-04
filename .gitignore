@@ -10,3 +10,6 @@ out/
 *.pem
 .env*
 !.env.example
+
+# radar automático — datos locales (en producción usar RADAR_NOTES_FILE=/tmp/...)
+.radar-data/
