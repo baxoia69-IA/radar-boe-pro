@@ -3,12 +3,12 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 
 // ─── CONFIGURA AQUÍ ──────────────────────────────────────────────
-const WA_NUMBER = "34600000000"; // ← reemplaza con tu número sin +
+const WA_NUMBER = "34685870983"; // ← reemplaza con tu número sin +
 const EMAIL     = "info@lexfiscalia.es"; // ← reemplaza
 // ─────────────────────────────────────────────────────────────────
 
 const WA_MSG = encodeURIComponent(
-  "Hola Sonia 😊\nCreo que puedo estar pagando más impuestos de los que debería y me gustaría que revisaras mi caso.\n\nTe dejo un resumen:\n- A qué me dedico:\n- Ingresos aproximados:\n- Autónomo / empresa / particular:\n- Duda principal:\n\nGracias."
+  "Hola Sonia 👋\nHe visto tu web y creo que podría estar pagando más impuestos de los que debería.\n\n¿Podrías revisar mi caso?\nGracias 🙏"
 );
 const WA_HREF = `https://wa.me/${WA_NUMBER}?text=${WA_MSG}`;
 
