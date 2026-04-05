@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parse } from "node-html-parser";
 
 // ─── TIPOS PÚBLICOS ───────────────────────────────────────────────
 export interface UrlAnalysis {
@@ -49,131 +50,145 @@ function log(
 
 // ─── DETECCIÓN DE ÍNDICE POR URL ──────────────────────────────────
 const INDEX_URL_PATTERNS: RegExp[] = [
-  // AEAT listados conocidos
   /todas-noticias/i,
   /\/Sede\/?(?:[?#]|$)/i,
   /\/Inicio\/Novedades\/?(?:[?#]|$)/i,
   /\/Inicio\/?(?:[?#]|$)/i,
   /\/AEAT\.internet\/?(?:[?#]|$)/i,
-  /agenciatributaria\.es\/?(?:[?#]|$)/i,
-  /sede\.agenciatributaria\.gob\.es\/?(?:[?#]|$)/i,
-  // BOE índices y buscadores
   /boe\.es\/boe\/dias\//i,
-  /boe\.es\/?(?:[?#]|$)/i,
   /boe\.es\/buscar\//i,
-  // Paginación / búsquedas
   /[?&](?:page|pagina|p)=\d+/i,
   /[?&]tipobusqueda=/i,
-  // Raíz de dominios conocidos sin path específico
-  /^https?:\/\/(?:www\.)?(?:boe\.es|agenciatributaria\.es|hacienda\.gob\.es)\/?(?:[?#]|$)/i,
+  /^https?:\/\/(?:www\.)?boe\.es\/?(?:[?#]|$)/i,
+  /^https?:\/\/(?:www\.)?agenciatributaria\.es\/?(?:[?#]|$)/i,
+  /^https?:\/\/(?:www\.)?hacienda\.gob\.es\/?(?:[?#]|$)/i,
+  /^https?:\/\/sede\.agenciatributaria\.gob\.es\/?(?:[?#]|$)/i,
 ];
 
 function isIndexByUrl(url: string): boolean {
   return INDEX_URL_PATTERNS.some((p) => p.test(url));
 }
 
-// ─── DETECCIÓN DE ÍNDICE POR HTML ────────────────────────────────
-/**
- * Analiza el HTML crudo para determinar si es una página de listado.
- * Criterio: muchos enlaces con poco contenido de párrafos = índice.
- */
-function isIndexByHtml(html: string): boolean {
-  const anchorCount = (html.match(/<a[\s>]/gi) ?? []).length;
-  const paragraphCount = (html.match(/<p[\s>]/gi) ?? []).length;
-
-  // Firmas de páginas de listado
-  const hasListClass = /<[^>]+class="[^"]*(?:lista|listado|news-list|article-list|noticias)[^"]*"/i.test(html);
-
-  // Muchos links, pocos párrafos = índice
-  const linkHeavy = anchorCount > 20 && anchorCount > paragraphCount * 4;
-
-  return linkHeavy || hasListClass;
-}
-
-// ─── EXTRACCIÓN DE CONTENIDO ──────────────────────────────────────
+// ─── EXTRACCIÓN DE CONTENIDO (DOM real) ───────────────────────────
 interface ExtractionResult {
   text: string;
   strategy: string;
 }
 
-function htmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<nav[\s\S]*?<\/nav>/gi, "")
-    .replace(/<header[\s\S]*?<\/header>/gi, "")
-    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
-    .replace(/<aside[\s\S]*?<\/aside>/gi, "")
-    .replace(/<[^>]+>/g, " ")
+/**
+ * Convierte texto bruto de un nodo DOM en texto limpio.
+ */
+function nodeText(el: { text: string }): string {
+  return el.text
+    .replace(/\s+/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#\d+;/g, "")
-    .replace(/\s+/g, " ")
     .trim();
 }
 
 /**
- * Extrae el contenido principal del HTML usando estrategias específicas por fuente.
- * NO tiene "body-fallback" genérico — si no encuentra contenido, devuelve vacío.
+ * Extrae el contenido principal del HTML usando DOM real (node-html-parser).
+ * NO tiene "body-fallback" genérico — si no encuentra contenido retorna vacío.
  */
 function extractContent(html: string, url: string): ExtractionResult {
   const lower = url.toLowerCase();
+  const root = parse(html, { blockTextElements: { script: false, style: false } });
+
+  // Eliminar bloques ruidosos antes de cualquier extracción
+  for (const tag of ["script", "style", "nav", "header", "footer", "aside", "noscript"]) {
+    root.querySelectorAll(tag).forEach((n) => n.remove());
+  }
 
   // ── BOE: id="textoBOE" o id="cuerpoPublicacion" ─────────────────
   if (lower.includes("boe.es")) {
     for (const id of ["textoBOE", "cuerpoPublicacion", "textoBoe"]) {
-      const re = new RegExp(`<div[^>]+id="${id}"[^>]*>([\\s\\S]+?)(?=<div[^>]+id="|<\\/body>)`, "i");
-      const m = html.match(re);
-      if (m) {
-        const text = htmlToText(m[1]);
-        if (text.length >= 150) return { text: text.slice(0, 9000), strategy: `boe-${id}` };
+      const el = root.getElementById(id);
+      if (el) {
+        // Extraer todos los párrafos dentro del div
+        const paras = el.querySelectorAll("p, div")
+          .map((p) => nodeText(p).trim())
+          .filter((t) => t.length > 30);
+        const text = paras.join("\n\n").slice(0, 9000);
+        if (text.length >= 150) return { text, strategy: `boe-id-${id}` };
+        // Fallback: texto completo del nodo
+        const full = nodeText(el).slice(0, 9000);
+        if (full.length >= 150) return { text: full, strategy: `boe-id-${id}-raw` };
       }
     }
-    // BOE alternativo: recoger todos los <p> después del encabezado
-    const boeSection = html.match(/<div[^>]*class="[^"]*dario_boe[^"]*"[^>]*>([\s\S]+)/i);
-    if (boeSection) {
-      const paras = [...boeSection[1].matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
-        .map((m) => htmlToText(m[1]).trim())
-        .filter((t) => t.length > 30);
-      if (paras.length >= 2) return { text: paras.join("\n\n").slice(0, 9000), strategy: "boe-paragraphs" };
+    // BOE: clase diario_boe
+    const diario = root.querySelector(".diario_boe, .dario_boe");
+    if (diario) {
+      const text = nodeText(diario).slice(0, 9000);
+      if (text.length >= 150) return { text, strategy: "boe-class" };
     }
   }
 
-  // ── AEAT / Sede: clases y IDs conocidos ─────────────────────────
+  // ── AEAT / Hacienda: IDs y clases conocidas ──────────────────────
   if (lower.includes("agenciatributaria") || lower.includes("hacienda.gob")) {
     const aeatSelectors = [
-      /<div[^>]+id="[^"]*(?:contenido|content|main-content)[^"]*"[^>]*>([\s\S]+?)(?=<div[^>]+id="|<\/main>|<\/body>)/i,
-      /<div[^>]+class="[^"]*(?:contenidoTexto|textoInformacion|cuerpo-texto|contenedor-texto|articulo)[^"]*"[^>]*>([\s\S]+?)(?=<div[^>]+class="|<\/section>|<\/main>)/i,
+      "#contenido",
+      "#contenidoTexto",
+      "#textoInformacion",
+      "#main-content",
+      ".contenidoTexto",
+      ".textoInformacion",
+      ".cuerpo-texto",
+      ".contenedor-texto",
+      ".articulo",
+      "[id*='contenido']",
+      "[class*='contenido']",
     ];
-    for (const re of aeatSelectors) {
-      const m = html.match(re);
-      if (m) {
-        const text = htmlToText(m[1]);
-        if (text.length >= 150) return { text: text.slice(0, 9000), strategy: "aeat-selector" };
+    for (const sel of aeatSelectors) {
+      try {
+        const el = root.querySelector(sel);
+        if (el) {
+          const text = nodeText(el).slice(0, 9000);
+          if (text.length >= 150) return { text, strategy: `aeat-${sel}` };
+        }
+      } catch {
+        // selector inválido, ignorar
       }
     }
   }
 
   // ── Semántica estándar: <main> / <article> ───────────────────────
-  const semantic = html.match(/<(?:main|article)\b[^>]*>([\s\S]+?)<\/(?:main|article)>/i);
-  if (semantic) {
-    const text = htmlToText(semantic[1]);
-    if (text.length >= 150) return { text: text.slice(0, 9000), strategy: "semantic-main" };
+  for (const tag of ["main", "article", "[role='main']"]) {
+    try {
+      const el = root.querySelector(tag);
+      if (el) {
+        const text = nodeText(el).slice(0, 9000);
+        if (text.length >= 150) return { text, strategy: `semantic-${tag}` };
+      }
+    } catch {
+      // ignorar
+    }
   }
 
-  // ── Todos los párrafos largos como último recurso ────────────────
-  const allParas = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
-    .map((m) => htmlToText(m[1]).trim())
-    .filter((t) => t.length > 60);
-  if (allParas.length >= 3) {
-    return { text: allParas.join("\n\n").slice(0, 9000), strategy: "all-paragraphs" };
+  // ── Párrafos significativos: último recurso sin body-dump ────────
+  const paragraphs = root.querySelectorAll("p")
+    .map((p) => nodeText(p).trim())
+    .filter((t) => t.length > 80);
+  if (paragraphs.length >= 3) {
+    const text = paragraphs.join("\n\n").slice(0, 9000);
+    if (text.length >= 150) return { text, strategy: "paragraphs" };
   }
 
-  // Sin contenido útil encontrado
   return { text: "", strategy: "none" };
+}
+
+// ─── DETECCIÓN DE ÍNDICE POR HTML ────────────────────────────────
+function isIndexByHtml(html: string): boolean {
+  const root = parse(html);
+  const anchorCount = root.querySelectorAll("a").length;
+  const paragraphCount = root.querySelectorAll("p").length;
+  const hasListClass = root.querySelector(".lista, .listado, .news-list, .article-list, .noticias");
+
+  const linkHeavy = anchorCount > 20 && anchorCount > paragraphCount * 4;
+  return linkHeavy || Boolean(hasListClass);
 }
 
 // ─── PROMPT ──────────────────────────────────────────────────────
@@ -218,7 +233,7 @@ Devuelve ÚNICAMENTE el JSON. Sin markdown. Sin texto fuera del JSON.
 // ─── HANDLER ─────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
 
-  // 1. Parse
+  // 1. Parse body
   let url = "";
   try {
     const body = (await req.json()) as { url?: string };
@@ -239,7 +254,7 @@ export async function POST(req: NextRequest) {
 
   log("info", "Petición recibida", { url });
 
-  // 2. Detección de índice por URL — corta antes del fetch
+  // 2. Índice por URL — corta antes del fetch
   if (isIndexByUrl(url)) {
     log("warn", "INDEX_PAGE detectado por URL", { url });
     return NextResponse.json<UrlAnalysisError>(
@@ -275,8 +290,9 @@ export async function POST(req: NextRequest) {
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "es-ES,es;q=0.9",
         "Cache-Control": "no-cache",
+        Referer: "https://www.google.com/",
       },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (res.status === 403 || res.status === 429) {
@@ -307,6 +323,7 @@ export async function POST(req: NextRequest) {
     }
 
     rawHtml = await res.text();
+    log("info", "HTML descargado", { url, htmlLength: rawHtml.length });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const isTimeout = msg.toLowerCase().includes("abort") || msg.toLowerCase().includes("timeout");
@@ -314,7 +331,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json<UrlAnalysisError>(
       {
         error: isTimeout
-          ? "La página tardó demasiado en responder (>12s). Inténtalo de nuevo."
+          ? "La página tardó demasiado en responder (>15s). Inténtalo de nuevo."
           : `No se pudo acceder a la URL: ${msg}`,
         code: "FETCH_ERROR",
       },
@@ -322,9 +339,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5. Detección de índice por HTML (segunda capa)
+  // 5. Detección de índice por HTML
   if (isIndexByHtml(rawHtml)) {
-    log("warn", "INDEX_PAGE detectado por HTML", { url });
+    log("warn", "INDEX_PAGE detectado por análisis HTML", { url });
     return NextResponse.json<UrlAnalysisError>(
       {
         error: "Esta página contiene un listado de documentos, no un documento concreto.",
@@ -336,21 +353,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 6. Extracción de contenido
+  // 6. Extracción de contenido con DOM real
   const { text: content, strategy } = extractContent(rawHtml, url);
   const charsExtracted = content.length;
 
   log("info", "Contenido extraído", { url, strategy, charsExtracted });
 
-  // 7. Validación de contenido mínimo
+  // 7. Validación: mínimo 300 chars reales
   if (charsExtracted < 300) {
     log("warn", "INSUFFICIENT: texto demasiado corto", { url, charsExtracted, strategy });
     return NextResponse.json<UrlAnalysisError>(
       {
-        error: `Contenido insuficiente para análisis (${charsExtracted} chars extraídos).`,
+        error: `Contenido insuficiente para análisis (${charsExtracted} chars extraídos con estrategia: ${strategy}).`,
         code: "INSUFFICIENT",
         suggestion:
-          "Comprueba que la URL apunta al texto completo del documento, no a un resumen o portal de acceso.",
+          "Comprueba que la URL apunta al texto completo del documento (HTML), no a un resumen ni a un portal de acceso.",
       },
       { status: 422 }
     );
@@ -393,7 +410,7 @@ export async function POST(req: NextRequest) {
     const match = aiRaw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("Sin JSON en respuesta");
     parsed = JSON.parse(match[0]) as Record<string, unknown>;
-  } catch (e) {
+  } catch {
     log("error", "Error parseando respuesta IA", { aiRaw: aiRaw.slice(0, 200) });
     return NextResponse.json<UrlAnalysisError>(
       { error: "La IA devolvió una respuesta malformada.", code: "AI_ERROR" },
@@ -438,8 +455,8 @@ export async function POST(req: NextRequest) {
     "documento relevante",
     "información fiscal relevante",
     "nueva disposición con impacto",
-    "el documento no especifica",
     "sin datos suficientes",
+    "no se han proporcionado",
   ];
   const combinedText = (title + " " + whatHappened).toLowerCase();
   const isGeneric = GENERIC_SIGNALS.some((s) => combinedText.includes(s));
