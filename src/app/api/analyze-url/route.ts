@@ -9,29 +9,92 @@ export interface UrlAnalysis {
   risk: string;
   recommendation: string;
   sourceUrl: string;
-  /** Cuántos caracteres de contenido real se extrajeron del documento */
+  /** Caracteres de texto útil extraídos del documento */
   extractedChars: number;
-  /** "real" = documento concreto analizado; "limited" = contenido parcial */
+  /** "real" ≥ 600 chars de contenido concreto; "limited" 300–599 */
   analysisSource: "real" | "limited";
 }
 
 export interface UrlAnalysisError {
   error: string;
   code:
-    | "INDEX_PAGE"
-    | "INSUFFICIENT_CONTENT"
-    | "PDF"
-    | "FETCH_ERROR"
-    | "BLOCKED"
-    | "AI_ERROR"
-    | "CONFIG_ERROR"
-    | "INVALID_INPUT";
+    | "INDEX_PAGE"       // URL es un listado general → 400
+    | "INSUFFICIENT"     // Contenido extraído < 300 chars → 422
+    | "PDF"              // PDF detectado → 422
+    | "FETCH_ERROR"      // Error de red → 502
+    | "BLOCKED"          // 403/429 del servidor → 502
+    | "AI_ERROR"         // Error de OpenAI → 500
+    | "CONFIG_ERROR"     // Falta API key → 503
+    | "INVALID_INPUT";   // Body inválido → 400
   suggestion?: string;
 }
 
-// ─── HELPERS HTML ─────────────────────────────────────────────────
+// ─── USER-AGENT ───────────────────────────────────────────────────
 const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+// ─── LOG HELPER ───────────────────────────────────────────────────
+function log(
+  level: "info" | "warn" | "error",
+  msg: string,
+  meta?: Record<string, unknown>
+) {
+  const prefix = `[analyze-url][${level.toUpperCase()}]`;
+  const line = meta ? `${msg} ${JSON.stringify(meta)}` : msg;
+  if (level === "error") console.error(prefix, line);
+  else if (level === "warn") console.warn(prefix, line);
+  else console.log(prefix, line);
+}
+
+// ─── DETECCIÓN DE ÍNDICE POR URL ──────────────────────────────────
+const INDEX_URL_PATTERNS: RegExp[] = [
+  // AEAT listados conocidos
+  /todas-noticias/i,
+  /\/Sede\/?(?:[?#]|$)/i,
+  /\/Inicio\/Novedades\/?(?:[?#]|$)/i,
+  /\/Inicio\/?(?:[?#]|$)/i,
+  /\/AEAT\.internet\/?(?:[?#]|$)/i,
+  /agenciatributaria\.es\/?(?:[?#]|$)/i,
+  /sede\.agenciatributaria\.gob\.es\/?(?:[?#]|$)/i,
+  // BOE índices y buscadores
+  /boe\.es\/boe\/dias\//i,
+  /boe\.es\/?(?:[?#]|$)/i,
+  /boe\.es\/buscar\//i,
+  // Paginación / búsquedas
+  /[?&](?:page|pagina|p)=\d+/i,
+  /[?&]tipobusqueda=/i,
+  // Raíz de dominios conocidos sin path específico
+  /^https?:\/\/(?:www\.)?(?:boe\.es|agenciatributaria\.es|hacienda\.gob\.es)\/?(?:[?#]|$)/i,
+];
+
+function isIndexByUrl(url: string): boolean {
+  return INDEX_URL_PATTERNS.some((p) => p.test(url));
+}
+
+// ─── DETECCIÓN DE ÍNDICE POR HTML ────────────────────────────────
+/**
+ * Analiza el HTML crudo para determinar si es una página de listado.
+ * Criterio: muchos enlaces con poco contenido de párrafos = índice.
+ */
+function isIndexByHtml(html: string): boolean {
+  const anchorCount = (html.match(/<a[\s>]/gi) ?? []).length;
+  const paragraphCount = (html.match(/<p[\s>]/gi) ?? []).length;
+
+  // Firmas de páginas de listado
+  const hasListClass = /<[^>]+class="[^"]*(?:lista|listado|news-list|article-list|noticias)[^"]*"/i.test(html);
+
+  // Muchos links, pocos párrafos = índice
+  const linkHeavy = anchorCount > 20 && anchorCount > paragraphCount * 4;
+
+  return linkHeavy || hasListClass;
+}
+
+// ─── EXTRACCIÓN DE CONTENIDO ──────────────────────────────────────
+interface ExtractionResult {
+  text: string;
+  strategy: string;
+}
 
 function htmlToText(html: string): string {
   return html
@@ -52,193 +115,101 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-// ─── CLASIFICACIÓN DE URL ─────────────────────────────────────────
 /**
- * Detecta si una URL apunta a un índice/listado en lugar de un documento concreto.
- * Retorna true si parece índice → hay que rechazar antes de llamar a la IA.
+ * Extrae el contenido principal del HTML usando estrategias específicas por fuente.
+ * NO tiene "body-fallback" genérico — si no encuentra contenido, devuelve vacío.
  */
-const INDEX_URL_PATTERNS: RegExp[] = [
-  // AEAT listados
-  /todas-noticias/i,
-  /\/Sede\/?$/i,
-  /\/Sede\/index\.html?$/i,
-  /\/Inicio\/Novedades\/?$/i,
-  /\/Inicio\/?$/i,
-  /\/AEAT\.internet\/?$/i,
-  /\/AEAT\.internet\/Inicio\/?$/i,
-  // BOE índices
-  /boe\.es\/boe\/dias\//i,
-  /boe\.es\/?$/i,
-  /boe\.es\/buscar\/boe\?/i,
-  /boe\.es\/buscar\/legislacion\?/i,
-  // Búsquedas genéricas
-  /[?&]tipobusqueda=/i,
-  /[?&]page=\d+/i,
-  // Páginas raíz sin path significativo
-  /^https?:\/\/[^/]+\/?$/,
-];
-
-function isIndexUrl(url: string): boolean {
-  return INDEX_URL_PATTERNS.some((p) => p.test(url));
-}
-
-// ─── EXTRACCIÓN DE CONTENIDO ──────────────────────────────────────
-interface ExtractionResult {
-  text: string;
-  strategy: string;
-}
-
 function extractContent(html: string, url: string): ExtractionResult {
   const lower = url.toLowerCase();
 
-  // ── Estrategia 1: BOE documento (id=BOE-A-...) ──────────────────
+  // ── BOE: id="textoBOE" o id="cuerpoPublicacion" ─────────────────
   if (lower.includes("boe.es")) {
-    const boe = html.match(
-      /<div[^>]*id="(?:textoBOE|cuerpoPublicacion)"[^>]*>([\s\S]*?)<\/div>/i
-    );
-    if (boe) {
-      const text = htmlToText(boe[1]);
-      if (text.length > 200) return { text: text.slice(0, 9000), strategy: "boe-body" };
+    for (const id of ["textoBOE", "cuerpoPublicacion", "textoBoe"]) {
+      const re = new RegExp(`<div[^>]+id="${id}"[^>]*>([\\s\\S]+?)(?=<div[^>]+id="|<\\/body>)`, "i");
+      const m = html.match(re);
+      if (m) {
+        const text = htmlToText(m[1]);
+        if (text.length >= 150) return { text: text.slice(0, 9000), strategy: `boe-${id}` };
+      }
     }
-    // BOE alternativo: div class que contiene texto
-    const boe2 = html.match(/<div[^>]*class="[^"]*dario_boe[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    if (boe2) {
-      const text = htmlToText(boe2[1]);
-      if (text.length > 200) return { text: text.slice(0, 9000), strategy: "boe-dario" };
+    // BOE alternativo: recoger todos los <p> después del encabezado
+    const boeSection = html.match(/<div[^>]*class="[^"]*dario_boe[^"]*"[^>]*>([\s\S]+)/i);
+    if (boeSection) {
+      const paras = [...boeSection[1].matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+        .map((m) => htmlToText(m[1]).trim())
+        .filter((t) => t.length > 30);
+      if (paras.length >= 2) return { text: paras.join("\n\n").slice(0, 9000), strategy: "boe-paragraphs" };
     }
   }
 
-  // ── Estrategia 2: AEAT / Sede contenido principal ───────────────
-  if (lower.includes("agenciatributaria") || lower.includes("sede.agencia")) {
-    const aeatPatterns = [
-      /<div[^>]*id="[^"]*contenido[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      /<div[^>]*class="[^"]*(?:contenidoTexto|textoNormativo|contenedor-texto)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      /<div[^>]*class="[^"]*(?:cuerpo|body-content|main-content)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+  // ── AEAT / Sede: clases y IDs conocidos ─────────────────────────
+  if (lower.includes("agenciatributaria") || lower.includes("hacienda.gob")) {
+    const aeatSelectors = [
+      /<div[^>]+id="[^"]*(?:contenido|content|main-content)[^"]*"[^>]*>([\s\S]+?)(?=<div[^>]+id="|<\/main>|<\/body>)/i,
+      /<div[^>]+class="[^"]*(?:contenidoTexto|textoInformacion|cuerpo-texto|contenedor-texto|articulo)[^"]*"[^>]*>([\s\S]+?)(?=<div[^>]+class="|<\/section>|<\/main>)/i,
     ];
-    for (const p of aeatPatterns) {
-      const m = html.match(p);
+    for (const re of aeatSelectors) {
+      const m = html.match(re);
       if (m) {
         const text = htmlToText(m[1]);
-        if (text.length > 200) return { text: text.slice(0, 9000), strategy: "aeat-div" };
+        if (text.length >= 150) return { text: text.slice(0, 9000), strategy: "aeat-selector" };
       }
     }
   }
 
-  // ── Estrategia 3: Semántica estándar (<main> / <article>) ───────
-  const semantic = html.match(
-    /<(?:main|article)\b[^>]*>([\s\S]*?)<\/(?:main|article)>/i
-  );
+  // ── Semántica estándar: <main> / <article> ───────────────────────
+  const semantic = html.match(/<(?:main|article)\b[^>]*>([\s\S]+?)<\/(?:main|article)>/i);
   if (semantic) {
     const text = htmlToText(semantic[1]);
-    if (text.length > 200) return { text: text.slice(0, 9000), strategy: "semantic" };
+    if (text.length >= 150) return { text: text.slice(0, 9000), strategy: "semantic-main" };
   }
 
-  // ── Estrategia 4: <div id="content"> ───────────────────────────
-  const divContent = html.match(
-    /<div[^>]*id="(?:content|main|contenido)"[^>]*>([\s\S]*?)<\/div>/i
-  );
-  if (divContent) {
-    const text = htmlToText(divContent[1]);
-    if (text.length > 200) return { text: text.slice(0, 9000), strategy: "div-content" };
+  // ── Todos los párrafos largos como último recurso ────────────────
+  const allParas = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((m) => htmlToText(m[1]).trim())
+    .filter((t) => t.length > 60);
+  if (allParas.length >= 3) {
+    return { text: allParas.join("\n\n").slice(0, 9000), strategy: "all-paragraphs" };
   }
 
-  // ── Fallback: body completo ────────────────────────────────────
-  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
-  return { text: htmlToText(body).slice(0, 9000), strategy: "body-fallback" };
-}
-
-// ─── VALIDACIÓN DE CALIDAD ────────────────────────────────────────
-interface ContentQuality {
-  ok: boolean;
-  isIndex: boolean;
-  reason?: string;
-}
-
-function assessContentQuality(text: string, url: string): ContentQuality {
-  // Mínimo absoluto
-  if (text.length < 250) {
-    return {
-      ok: false, isIndex: false,
-      reason: "El contenido extraído es demasiado corto para un análisis fiable.",
-    };
-  }
-
-  // Detectar índice por densidad de contenido:
-  // Si hay muchas líneas cortas y pocas largas → es una lista de titulares
-  const lines = text.split(/\s{3,}|\n/).filter((l) => l.trim().length > 10);
-  const longLines = lines.filter((l) => l.trim().length > 120);
-  const shortLines = lines.filter((l) => l.trim().length <= 120);
-
-  const isIndexByDensity =
-    lines.length > 10 &&
-    longLines.length < 3 &&
-    shortLines.length > longLines.length * 4;
-
-  if (isIndexByDensity) {
-    return {
-      ok: false, isIndex: true,
-      reason:
-        "El contenido parece ser un listado de titulares, no un documento concreto.",
-    };
-  }
-
-  // Comprobar si tiene contenido fiscal real (mínimo señal temática)
-  const fiscalTerms = [
-    "impuesto", "tributar", "hacienda", "renta", "iva", "irpf",
-    "autónomo", "modelo", "declaración", "retención", "fiscal",
-    "aeat", "agencia tributaria", "boe", "real decreto", "resolución",
-    "orden", "ley", "reglamento", "artículo",
-  ];
-  const lower = text.toLowerCase();
-  const hasFiscalContent = fiscalTerms.some((t) => lower.includes(t));
-
-  if (!hasFiscalContent && url.length > 0) {
-    return {
-      ok: false, isIndex: false,
-      reason:
-        "El contenido extraído no parece ser un documento fiscal. Verifica que la URL apunta a un documento de la AEAT o el BOE.",
-    };
-  }
-
-  return { ok: true, isIndex: false };
+  // Sin contenido útil encontrado
+  return { text: "", strategy: "none" };
 }
 
 // ─── PROMPT ──────────────────────────────────────────────────────
 function buildMessages(url: string, content: string) {
-  const system = `Eres el mejor asesor fiscal de España. Traduces documentos oficiales áridos en explicaciones claras para contribuyentes medios: autónomos, pequeñas empresas y particulares.
+  const system = `Eres el mejor asesor fiscal de España. Tu único trabajo en este momento es analizar el documento que te proporcionan y explicarlo en lenguaje claro para contribuyentes medios.
 
-REGLAS ESTRICTAS:
-1. Usa SOLO la información del documento proporcionado. No inventes ni generalices.
-2. Si el documento menciona cifras (€, %, fechas), inclúyelas SIEMPRE.
-3. Cero lenguaje administrativo: nada de "en virtud de", "a los efectos", "la presente".
-4. El riesgo de no actuar es más motivador que el beneficio: ponlo primero.
-5. Cada acción debe ser ejecutable hoy por una persona sin conocimientos jurídicos.
-6. Si el contenido es un listado de noticias o no corresponde a un documento fiscal específico, devuelve: {"error": "CONTENT_IS_INDEX", "message": "El contenido no corresponde a un documento específico."}.`;
+REGLAS ABSOLUTAS — sin excepciones:
+1. Usa EXCLUSIVAMENTE la información del documento. Cero inventiva. Cero generalización.
+2. Si el documento menciona cifras (€, %, fechas, artículos de ley), inclúyelas literalmente.
+3. Nunca escribas "en virtud de", "a los efectos de", "la presente disposición" ni similar.
+4. Si el contenido no es un documento fiscal específico, devuelve SOLO: {"error":"CONTENT_IS_INDEX"}.
+5. Si no hay suficiente información para responder con datos concretos, devuelve SOLO: {"error":"INSUFFICIENT"}.`;
 
-  const user = `Analiza este documento oficial fiscal:
+  const user = `Documento oficial a analizar:
 
 URL: ${url}
 
-CONTENIDO EXTRAÍDO DEL DOCUMENTO:
+CONTENIDO EXTRAÍDO:
 ---
 ${content}
 ---
 
-Devuelve ÚNICAMENTE el siguiente JSON válido. Sin markdown. Sin texto fuera del JSON.
-Si el contenido no es un documento fiscal específico, devuelve el JSON de error indicado.
+Devuelve ÚNICAMENTE el JSON. Sin markdown. Sin texto fuera del JSON.
 
 {
-  "title": "TITULAR DE IMPACTO. Máx. 95 chars. Lo primero que leerá el contribuyente. Empieza por la consecuencia o el cambio, nunca por 'La AEAT' ni 'El BOE'. Usa datos reales del documento.",
-  "whatHappened": "2-3 frases con datos específicos del documento: qué cambia, desde cuándo, bajo qué condiciones. Incluye la referencia normativa si aparece (ej: 'Resolución de 15 de marzo de 2024').",
-  "whoAffected": "Exacto y segmentado: tipo de contribuyente, régimen, sector, umbrales si los hay. Ejemplo: 'Autónomos en estimación directa simplificada con rendimientos netos superiores a 21.000 €'.",
+  "title": "Titular de impacto. Máx. 90 chars. Empieza por la consecuencia. Usa datos del documento (fechas, porcentajes, importes). Nunca empieces por 'La AEAT', 'El BOE' ni 'Nueva'.",
+  "whatHappened": "2-3 frases con datos específicos: qué cambia, desde cuándo, referencia normativa exacta si aparece.",
+  "whoAffected": "Segmentos precisos con umbrales si los hay (ejemplo: autónomos en módulos con rendimientos >X€). No listas genéricas.",
   "whatToDo": [
-    "Verbo imperativo + acción específica + dato concreto del documento",
-    "Segunda acción ejecutable hoy",
-    "Qué documentación conservar o revisar y dónde encontrarla",
+    "Verbo imperativo + acción específica + datos concretos del documento",
+    "Segunda acción ejecutable esta semana",
+    "Qué conservar o dónde verificar (con nombre exacto del modelo o portal si aplica)",
     "Plazo límite si el documento lo menciona"
   ],
-  "risk": "Consecuencia concreta de no actuar: recargo exacto, multa, pérdida de deducción. Si el documento da cifras, úsalas. Si no, indica el rango habitual.",
-  "recommendation": "La acción más urgente en una sola frase. Específica y con herramienta concreta si existe (calculadora AEAT, modelo concreto, sede electrónica)."
+  "risk": "Consecuencia exacta de no actuar: recargo X%, multa €Y, pérdida de deducción. Si el documento no da cifras, indica 'el documento no especifica el importe'.",
+  "recommendation": "Una sola frase. La acción más urgente con herramienta concreta (modelo X, sede electrónica, calculadora AEAT)."
 }`;
 
   return { system, user };
@@ -246,14 +217,15 @@ Si el contenido no es un documento fiscal específico, devuelve el JSON de error
 
 // ─── HANDLER ─────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  // 1. Parse body
+
+  // 1. Parse
   let url = "";
   try {
     const body = (await req.json()) as { url?: string };
     url = typeof body.url === "string" ? body.url.trim() : "";
   } catch {
     return NextResponse.json<UrlAnalysisError>(
-      { error: "Cuerpo JSON inválido.", code: "INVALID_INPUT" },
+      { error: "Body JSON inválido.", code: "INVALID_INPUT" },
       { status: 400 }
     );
   }
@@ -265,28 +237,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 2. Detección temprana de índice por URL
-  if (isIndexUrl(url)) {
-    console.log(`[/api/analyze-url] INDEX_PAGE detectado por URL: ${url}`);
+  log("info", "Petición recibida", { url });
+
+  // 2. Detección de índice por URL — corta antes del fetch
+  if (isIndexByUrl(url)) {
+    log("warn", "INDEX_PAGE detectado por URL", { url });
     return NextResponse.json<UrlAnalysisError>(
       {
-        error:
-          "Esta URL es un listado general, no un documento concreto. No puedo analizarla.",
+        error: "Esta URL es un listado general, no un documento concreto.",
         code: "INDEX_PAGE",
         suggestion:
-          "Haz clic en una noticia o disposición concreta de ese listado y pega esa URL aquí.",
+          "Haz clic en una noticia o disposición concreta del listado y pega esa URL aquí.",
       },
-      { status: 422 }
+      { status: 400 }
     );
   }
 
-  // 3. Validar API key
+  // 3. API key
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.error("[/api/analyze-url] OPENAI_API_KEY no configurada");
+    log("error", "OPENAI_API_KEY no configurada");
     return NextResponse.json<UrlAnalysisError>(
       {
-        error: "La IA no está configurada. Añade OPENAI_API_KEY en las variables de entorno.",
+        error: "IA no configurada. Añade OPENAI_API_KEY en las variables de entorno.",
         code: "CONFIG_ERROR",
       },
       { status: 503 }
@@ -301,32 +274,33 @@ export async function POST(req: NextRequest) {
         "User-Agent": UA,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "es-ES,es;q=0.9",
+        "Cache-Control": "no-cache",
       },
       signal: AbortSignal.timeout(12_000),
     });
 
     if (res.status === 403 || res.status === 429) {
+      log("warn", "Servidor bloqueó la petición", { status: res.status, url });
       return NextResponse.json<UrlAnalysisError>(
         {
-          error: `El servidor bloqueó la petición (HTTP ${res.status}). Prueba copiando el contenido manualmente.`,
+          error: `El servidor bloqueó el acceso (HTTP ${res.status}). Este sitio puede requerir autenticación.`,
           code: "BLOCKED",
+          suggestion: "Comprueba que la URL es pública y no requiere login.",
         },
         { status: 502 }
       );
     }
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const contentType = res.headers.get("content-type") ?? "";
-    if (contentType.includes("pdf")) {
+    const ct = res.headers.get("content-type") ?? "";
+    if (ct.includes("pdf")) {
+      log("warn", "PDF detectado", { url });
       return NextResponse.json<UrlAnalysisError>(
         {
-          error: "El documento es un PDF.",
+          error: "El documento es un PDF y no puede procesarse directamente.",
           code: "PDF",
-          suggestion:
-            "En el BOE, usa el enlace 'HTML' del documento en lugar del PDF.",
+          suggestion: "En el BOE, usa el enlace «HTML» del documento en lugar del PDF.",
         },
         { status: 422 }
       );
@@ -335,8 +309,8 @@ export async function POST(req: NextRequest) {
     rawHtml = await res.text();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const isTimeout = msg.includes("abort") || msg.includes("timeout");
-    console.error(`[/api/analyze-url] Fetch error "${url}":`, e);
+    const isTimeout = msg.toLowerCase().includes("abort") || msg.toLowerCase().includes("timeout");
+    log("error", "Error de fetch", { url, msg });
     return NextResponse.json<UrlAnalysisError>(
       {
         error: isTimeout
@@ -348,42 +322,53 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5. Extraer contenido
-  const { text: content, strategy } = extractContent(rawHtml, url);
-  console.log(
-    `[/api/analyze-url] Extraído ${content.length} chars (estrategia: ${strategy})`
-  );
-
-  // 6. Validar calidad del contenido
-  const quality = assessContentQuality(content, url);
-  if (!quality.ok) {
-    const code: UrlAnalysisError["code"] = quality.isIndex
-      ? "INDEX_PAGE"
-      : "INSUFFICIENT_CONTENT";
+  // 5. Detección de índice por HTML (segunda capa)
+  if (isIndexByHtml(rawHtml)) {
+    log("warn", "INDEX_PAGE detectado por HTML", { url });
     return NextResponse.json<UrlAnalysisError>(
       {
-        error: quality.reason ?? "Contenido insuficiente.",
-        code,
-        suggestion: quality.isIndex
-          ? "Haz clic en una noticia o disposición concreta del listado y pega esa URL aquí."
-          : "Asegúrate de que la URL apunta a la página HTML del documento, no a un buscador o índice.",
+        error: "Esta página contiene un listado de documentos, no un documento concreto.",
+        code: "INDEX_PAGE",
+        suggestion:
+          "Accede a un documento individual del listado y pega esa URL aquí.",
+      },
+      { status: 400 }
+    );
+  }
+
+  // 6. Extracción de contenido
+  const { text: content, strategy } = extractContent(rawHtml, url);
+  const charsExtracted = content.length;
+
+  log("info", "Contenido extraído", { url, strategy, charsExtracted });
+
+  // 7. Validación de contenido mínimo
+  if (charsExtracted < 300) {
+    log("warn", "INSUFFICIENT: texto demasiado corto", { url, charsExtracted, strategy });
+    return NextResponse.json<UrlAnalysisError>(
+      {
+        error: `Contenido insuficiente para análisis (${charsExtracted} chars extraídos).`,
+        code: "INSUFFICIENT",
+        suggestion:
+          "Comprueba que la URL apunta al texto completo del documento, no a un resumen o portal de acceso.",
       },
       { status: 422 }
     );
   }
 
-  // 7. Análisis IA
+  // 8. Análisis IA
+  let aiRaw = "";
   try {
     const { default: OpenAI } = await import("openai");
     const openai = new OpenAI({ apiKey });
     const { system, user } = buildMessages(url, content);
 
-    console.log(`[/api/analyze-url] Enviando a GPT-4o — chars: ${content.length}`);
+    log("info", "Llamando a GPT-4o", { url, charsExtracted });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       max_tokens: 1500,
-      temperature: 0.15, // máxima fidelidad al documento
+      temperature: 0.1,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
@@ -391,81 +376,105 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const raw = completion.choices[0].message.content ?? "";
-    console.log(`[/api/analyze-url] Tokens: ${completion.usage?.total_tokens ?? "?"}`);
-
-    // 8. Parse
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-
-    // GPT detectó que el contenido es un índice
-    if (parsed.error === "CONTENT_IS_INDEX") {
-      return NextResponse.json<UrlAnalysisError>(
-        {
-          error:
-            "El contenido analizado no corresponde a un documento fiscal concreto.",
-          code: "INDEX_PAGE",
-          suggestion:
-            "Pega la URL de una disposición o noticia específica, no de una página de listado.",
-        },
-        { status: 422 }
-      );
-    }
-
-    // 9. Validar y sanitizar respuesta
-    const whatToDo = Array.isArray(parsed.whatToDo)
-      ? (parsed.whatToDo as unknown[]).map((s) => String(s).trim()).filter(Boolean)
-      : [];
-
-    const title = String(parsed.title ?? "").trim();
-    const whatHappened = String(parsed.whatHappened ?? "").trim();
-
-    // Anti-genérico: detectar respuestas vagas
-    const GENERIC_PHRASES = [
-      "nueva nota informativa",
-      "documento relevante",
-      "información fiscal relevante",
-      "nueva disposición",
-      "sin información suficiente",
-    ];
-    const isGeneric = GENERIC_PHRASES.some(
-      (p) =>
-        title.toLowerCase().includes(p) ||
-        whatHappened.toLowerCase().includes(p)
-    );
-
-    if (isGeneric || !title || whatToDo.length === 0) {
-      console.warn("[/api/analyze-url] Respuesta genérica detectada:", { title });
-      return NextResponse.json<UrlAnalysisError>(
-        {
-          error:
-            "La IA no pudo extraer información específica de este documento. Es posible que la página requiera autenticación o que el contenido no sea textual.",
-          code: "INSUFFICIENT_CONTENT",
-          suggestion:
-            "Prueba con la versión en texto plano del documento (en el BOE: enlace 'HTML' en lugar de 'PDF').",
-        },
-        { status: 422 }
-      );
-    }
-
-    const result: UrlAnalysis = {
-      title,
-      whatHappened,
-      whoAffected: String(parsed.whoAffected ?? "").trim(),
-      whatToDo,
-      risk: String(parsed.risk ?? "").trim(),
-      recommendation: String(parsed.recommendation ?? "").trim(),
-      sourceUrl: url,
-      extractedChars: content.length,
-      analysisSource: content.length >= 600 ? "real" : "limited",
-    };
-
-    return NextResponse.json(result);
+    aiRaw = completion.choices[0].message.content ?? "";
+    log("info", "Respuesta GPT-4o recibida", { tokens: completion.usage?.total_tokens });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Error desconocido";
-    console.error(`[/api/analyze-url] AI error:`, e);
+    log("error", "Error llamando a OpenAI", { url, msg });
     return NextResponse.json<UrlAnalysisError>(
       { error: `Error en análisis IA: ${msg}`, code: "AI_ERROR" },
       { status: 500 }
     );
   }
+
+  // 9. Parse de respuesta IA
+  let parsed: Record<string, unknown>;
+  try {
+    const match = aiRaw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("Sin JSON en respuesta");
+    parsed = JSON.parse(match[0]) as Record<string, unknown>;
+  } catch (e) {
+    log("error", "Error parseando respuesta IA", { aiRaw: aiRaw.slice(0, 200) });
+    return NextResponse.json<UrlAnalysisError>(
+      { error: "La IA devolvió una respuesta malformada.", code: "AI_ERROR" },
+      { status: 500 }
+    );
+  }
+
+  // 10. GPT detectó contenido inválido
+  if (parsed.error === "CONTENT_IS_INDEX") {
+    log("warn", "GPT detectó contenido como índice", { url });
+    return NextResponse.json<UrlAnalysisError>(
+      {
+        error: "El documento analizado es un listado, no una disposición concreta.",
+        code: "INDEX_PAGE",
+        suggestion: "Pega la URL de una noticia o disposición específica.",
+      },
+      { status: 400 }
+    );
+  }
+  if (parsed.error === "INSUFFICIENT") {
+    log("warn", "GPT detectó contenido insuficiente", { url });
+    return NextResponse.json<UrlAnalysisError>(
+      {
+        error: "El documento no contiene suficiente información fiscal específica para analizarlo.",
+        code: "INSUFFICIENT",
+        suggestion: "Prueba con un documento que tenga el texto completo de la disposición.",
+      },
+      { status: 422 }
+    );
+  }
+
+  // 11. Validar y sanitizar campos
+  const title = String(parsed.title ?? "").trim();
+  const whatHappened = String(parsed.whatHappened ?? "").trim();
+  const whatToDo = Array.isArray(parsed.whatToDo)
+    ? (parsed.whatToDo as unknown[]).map((s) => String(s).trim()).filter(Boolean)
+    : [];
+
+  // Detección de respuesta genérica (última línea de defensa)
+  const GENERIC_SIGNALS = [
+    "nueva nota informativa",
+    "documento relevante",
+    "información fiscal relevante",
+    "nueva disposición con impacto",
+    "el documento no especifica",
+    "sin datos suficientes",
+  ];
+  const combinedText = (title + " " + whatHappened).toLowerCase();
+  const isGeneric = GENERIC_SIGNALS.some((s) => combinedText.includes(s));
+
+  if (isGeneric || !title || whatToDo.length === 0) {
+    log("warn", "Respuesta genérica detectada — rechazada", { title, url });
+    return NextResponse.json<UrlAnalysisError>(
+      {
+        error: "No se pudo extraer información específica de este documento.",
+        code: "INSUFFICIENT",
+        suggestion:
+          "Comprueba que la URL apunta a la versión HTML del documento completo (no a un PDF ni a una página de acceso).",
+      },
+      { status: 422 }
+    );
+  }
+
+  const result: UrlAnalysis = {
+    title,
+    whatHappened,
+    whoAffected: String(parsed.whoAffected ?? "").trim(),
+    whatToDo,
+    risk: String(parsed.risk ?? "").trim(),
+    recommendation: String(parsed.recommendation ?? "").trim(),
+    sourceUrl: url,
+    extractedChars: charsExtracted,
+    analysisSource: charsExtracted >= 600 ? "real" : "limited",
+  };
+
+  log("info", "Análisis completado", {
+    url,
+    sourceType: result.analysisSource,
+    charsExtracted,
+    strategy,
+  });
+
+  return NextResponse.json(result);
 }
