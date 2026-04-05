@@ -4,5 +4,25 @@
       "path": "/api/radar/fetch",
       "schedule": "0 */6 * * *"
     }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/analizar",
+      "destination": "/content",
+      "permanent": false
+    },
+    {
+      "source": "/analyze",
+      "destination": "/content",
+      "permanent": false
+    }
   ]
 }
